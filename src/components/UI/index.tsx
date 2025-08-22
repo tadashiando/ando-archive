@@ -2,6 +2,8 @@
 import React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../utils/cn";
+import { EyeIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
 // === BUTTON COMPONENT ===
 const buttonVariants = cva(
@@ -157,6 +159,7 @@ export interface DocumentCardProps extends Omit<CardProps, "variant"> {
   attachmentTypes: string[];
   onView?: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
@@ -168,11 +171,14 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
       attachmentTypes,
       onView,
       onEdit,
+      onDelete,
       className,
       ...props
     },
     ref
   ) => {
+    const { t } = useTranslation();
+
     const getFileTypeBadgeVariant = (
       type: string
     ): "text" | "image" | "pdf" | "video" => {
@@ -200,12 +206,12 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
                   size="sm"
                 >
                   {type === "text"
-                    ? "📜"
+                    ? "T"
                     : type === "image"
-                    ? "🖼️"
+                    ? "I"
                     : type === "pdf"
-                    ? "📄"
-                    : "🎬"}
+                    ? "P"
+                    : "V"}
                 </Badge>
               ))}
             </div>
@@ -219,19 +225,30 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
 
           <div className="flex justify-between items-center text-sm pt-2">
             <span className="sage-text-light font-medium">{date}</span>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               {onView && (
                 <IconButton
                   variant="ghost"
-                  icon={<span className="text-lg">👁️</span>}
+                  icon={<EyeIcon className="h-4 w-4" />}
                   onClick={onView}
+                  label={t("documents.view")}
                 />
               )}
               {onEdit && (
                 <IconButton
                   variant="ghost"
-                  icon={<span className="text-lg">✏️</span>}
+                  icon={<PencilIcon className="h-4 w-4" />}
                   onClick={onEdit}
+                  label={t("documents.edit")}
+                />
+              )}
+              {onDelete && (
+                <IconButton
+                  variant="ghost"
+                  icon={<TrashIcon className="h-4 w-4" />}
+                  onClick={onDelete}
+                  label={t("common.delete")}
+                  className="hover:bg-red-600/20 hover:text-red-400"
                 />
               )}
             </div>

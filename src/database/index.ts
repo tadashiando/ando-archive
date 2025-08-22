@@ -1,3 +1,5 @@
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { exists, remove } from "@tauri-apps/plugin-fs";
 import Database from "@tauri-apps/plugin-sql";
 
 export interface Category {
@@ -183,8 +185,70 @@ class DatabaseManager {
 
   async deleteDocument(id: number): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
+
+    const attachments = await this.getAttachments(id);
+
+    // Delete physical attachment files first
+    const fileDeletePromises = attachments.map(async (attachment) => {
+      try {
+        const fileExists = await exists(attachment.filepath);
+        if (fileExists) {
+          await remove(attachment.filepath);
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        return `Failed to delete file ${attachment.filepath}: ${errorMessage}`;
+      }
+      return null;
+    });
+
+    // Execute all file deletions, collect any errors
+    const fileResults = await Promise.all(fileDeletePromises);
+    const fileErrors = fileResults.filter(
+      (result): result is string => result !== null
+    );
+
+    // Try to remove document directory - but don't fail if it doesn't work
+    let directoryError: string | null = null;
+    try {
+      const appDir = await appDataDir();
+      const attachmentsDir = await join(
+        appDir,
+        "ando-archive",
+        "attachments",
+        id.toString()
+      );
+      const dirExists = await exists(attachmentsDir);
+      if (dirExists) {
+        await remove(attachmentsDir, { recursive: true });
+      }
+    } catch (error) {
+      // Don't throw here - just log the error and continue
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      directoryError = `Could not remove directory: ${errorMessage}`;
+    }
+
+    // Delete from database (this is the critical operation)
     await this.db.execute("DELETE FROM documents WHERE id = ?", [id]);
+
+    // Collect all warnings but don't fail the operation
+    const allWarnings = [...fileErrors];
+    if (directoryError) {
+      allWarnings.push(directoryError);
+    }
+
+    // Only log warnings if any exist, but don't throw
+    if (allWarnings.length > 0) {
+      // Log warnings but don't throw - the document was successfully deleted
+      const warningMessage = `Document deleted successfully, but with warnings: ${allWarnings.join(
+        "; "
+      )}`;
+      console.warn(warningMessage);
+    }
   }
+
   // === BUSCA ===
   async searchDocuments(query: string): Promise<Document[]> {
     if (!this.db) throw new Error("Database not initialized");

@@ -7,6 +7,7 @@ import DocumentEditor from "../Documents/Editor/DocumentEditor";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import DocumentViewer from "../Documents/Viewer/DocumentViewer";
+import Dialog from "../UI/Dialog";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -27,6 +28,11 @@ const MainLayout: React.FC = () => {
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
     null
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -125,6 +131,35 @@ const MainLayout: React.FC = () => {
   const handleNewCategory = () => {
     // TODO: Implementar modal/form para nova categoria
     console.log("Criar nova categoria");
+  };
+
+  const handleDeleteDocument = (documentId: number) => {
+    const document = documents.find((doc) => doc.id === documentId);
+    if (document) {
+      setDocumentToDelete(document);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await db.deleteDocument(documentToDelete.id);
+
+      if (selectedCategory) {
+        loadDocuments(selectedCategory.id);
+        loadCategories();
+      }
+
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getAttachmentTypes = () => {
@@ -274,6 +309,7 @@ const MainLayout: React.FC = () => {
                         attachmentTypes={attachmentTypes}
                         onView={() => handleViewDocument(document.id)}
                         onEdit={() => handleEditDocument(document.id)}
+                        onDelete={() => handleDeleteDocument(document.id)}
                       />
                     );
                   })}
@@ -299,6 +335,24 @@ const MainLayout: React.FC = () => {
           </main>
         </div>
       )}
+      <Dialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteDialogOpen(false);
+            setDocumentToDelete(null);
+          }
+        }}
+        title={t("documents.deleteTitle")}
+        description={t("documents.deleteConfirmation", {
+          title: documentToDelete?.title,
+        })}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
+        onConfirm={handleConfirmDelete}
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

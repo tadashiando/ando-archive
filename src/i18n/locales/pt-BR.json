@@ -13,7 +13,7 @@
   },
   "categories": {
     "recipes": "Receitas",
-    "construction": "Construção", 
+    "construction": "Construção",
     "architecture": "Arquitetura",
     "education": "Educação",
     "documentsCount": "{{count}} documento",
@@ -24,13 +24,15 @@
     "create": "Novo Documento",
     "createSubtitle": {
       "recipes": "Adicionar uma nova receita",
-      "construction": "Documentar projeto de construção", 
+      "construction": "Documentar projeto de construção",
       "architecture": "Criar projeto arquitetônico",
       "default": "Adicionar novo conhecimento"
     },
     "noDescription": "Sem descrição",
     "view": "Visualizar",
-    "edit": "Editar"
+    "edit": "Editar",
+    "deleteTitle": "Deletar Documento",
+    "deleteConfirmation": "Tem certeza que deseja deletar \"{{title}}\"? Esta ação não pode ser desfeita."
   },
   "modal": {
     "createDocument": {
@@ -53,7 +55,7 @@
   },
   "editor": {
     "bold": "Negrito",
-    "italic": "Itálico", 
+    "italic": "Itálico",
     "heading": "Título",
     "bulletList": "Lista"
   },

@@ -30,7 +30,9 @@
     },
     "noDescription": "No description",
     "view": "View",
-    "edit": "Edit"
+    "edit": "Edit",
+    "deleteTitle": "Delete Document",
+    "deleteConfirmation": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone."
   },
   "modal": {
     "createDocument": {
