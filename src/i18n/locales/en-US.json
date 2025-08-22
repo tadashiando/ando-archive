@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "Ando Archive",
+    "tagline": "Your personal knowledge library",
+    "loading": "Loading Ando Archive...",
+    "loadingSubtitle": "Preparing your library"
+  },
+  "navigation": {
+    "categories": "Categories",
+    "search": "Search documents...",
+    "create": "New Document",
+    "newCategory": "New Category"
+  },
+  "categories": {
+    "recipes": "Recipes",
+    "construction": "Construction",
+    "architecture": "Architecture",
+    "education": "Education",
+    "documentsCount": "{{count}} document",
+    "documentsCount_plural": "{{count}} documents",
+    "documentsInCategory": "in this category"
+  },
+  "documents": {
+    "create": "New Document",
+    "createSubtitle": {
+      "recipes": "Add a new recipe",
+      "construction": "Document construction project",
+      "architecture": "Create architectural project",
+      "default": "Add new knowledge"
+    },
+    "noDescription": "No description",
+    "view": "View",
+    "edit": "Edit"
+  },
+  "modal": {
+    "createDocument": {
+      "title": "Create Document",
+      "subtitle": "in {{category}} category",
+      "titleField": "Title",
+      "titlePlaceholder": "How to make homemade bread, New house project...",
+      "descriptionField": "Description (optional)",
+      "descriptionPlaceholder": "A brief description of the document...",
+      "contentField": "Content",
+      "contentPlaceholder": "Write content here...",
+      "attachmentsField": "Attachments (optional)",
+      "attachmentsPlaceholder": "Click to add attachments",
+      "attachmentsSubtitle": "Images, videos, PDFs, documents",
+      "attachmentsSelected": "Selected attachments:",
+      "cancel": "Cancel",
+      "create": "Create Document",
+      "creating": "Creating..."
+    }
+  },
+  "editor": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "heading": "Heading",
+    "bulletList": "List"
+  },
+  "fileTypes": {
+    "text": "Text",
+    "image": "Image",
+    "pdf": "PDF",
+    "video": "Video"
+  },
+  "common": {
+    "required": "*",
+    "optional": "(optional)",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "add": "Add",
+    "browserNotSupported": "Your browser doesn't support this file type",
+    "openPdf": "Open PDF"
+  }
+}

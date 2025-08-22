@@ -130,7 +130,7 @@ src/assets/fonts/*.woff2
 
 # User uploads/attachments
 uploads/
-documents/
+/documents/
 files/
 
 # Configuration files with sensitive data

@@ -3,5 +3,14 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "sql:default", "fs:default", "dialog:default"]
+  "permissions": [
+    "core:default",
+    "sql:default",
+    "fs:default",
+    "dialog:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-close"
+  ]
 }

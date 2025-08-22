@@ -1,6 +1,4 @@
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import Database from "@tauri-apps/plugin-sql";
 
 export interface Category {
   id: number;
@@ -31,148 +29,187 @@ export interface Attachment {
 }
 
 class DatabaseManager {
-  private db: Database.Database;
+  private db: Database | null = null;
 
-  constructor() {
-    // Caminho do banco na pasta userData do Electron
-    const userDataPath =
-      process.env.NODE_ENV === "development"
-        ? "./data"
-        : path.join(
-            process.env.HOME || process.env.USERPROFILE || "",
-            ".ando-archive"
-          );
-
-    if (!fs.existsSync(userDataPath)) {
-      fs.mkdirSync(userDataPath, { recursive: true });
-    }
-
-    const dbPath = path.join(userDataPath, "ando-archive.db");
-    this.db = new Database(dbPath);
-    this.init();
+  async init() {
+    this.db = await Database.load("sqlite:ando-archive.db");
+    await this.createTables();
+    await this.insertDefaultCategories();
   }
 
-  private init() {
-    // Ler e executar o schema
-    const schemaPath = path.join(__dirname, "schema.sql");
-    const schema = fs.readFileSync(schemaPath, "utf8");
-    this.db.exec(schema);
+  private async createTables() {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Categorias
+    await this.db.execute(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        icon TEXT DEFAULT 'folder',
+        color TEXT DEFAULT '#6B7280',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Documentos
+    await this.db.execute(`
+      CREATE TABLE IF NOT EXISTS documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        text_content TEXT,
+        category_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Anexos
+    await this.db.execute(`
+      CREATE TABLE IF NOT EXISTS attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        filepath TEXT NOT NULL,
+        filetype TEXT NOT NULL,
+        filesize INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+      )
+    `);
+  }
+
+  private async insertDefaultCategories() {
+    if (!this.db) return;
+
+    const categories = await this.db.select(
+      "SELECT COUNT(*) as count FROM categories"
+    ) as { count: number }[];
+    if (categories[0].count === 0) {
+      await this.db.execute(`
+        INSERT INTO categories (name, icon, color) VALUES 
+        ('Receitas', 'utensils', '#EA580C'),
+        ('Construção', 'hammer', '#2563EB'),
+        ('Arquitetura', 'drafting-compass', '#059669'),
+        ('Educação', 'graduation-cap', '#7C3AED')
+      `);
+    }
   }
 
   // === CATEGORIAS ===
-  getCategories(): Category[] {
-    return this.db
-      .prepare("SELECT * FROM categories ORDER BY name")
-      .all() as Category[];
+  async getCategories(): Promise<Category[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select("SELECT * FROM categories ORDER BY name");
   }
 
-  createCategory(
+  async createCategory(
     name: string,
     icon: string = "folder",
     color: string = "#6B7280"
-  ): Category {
-    const result = this.db
-      .prepare("INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)")
-      .run(name, icon, color);
-    return this.db
-      .prepare("SELECT * FROM categories WHERE id = ?")
-      .get(result.lastInsertRowid) as Category;
+  ): Promise<Category> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const result = await this.db.execute(
+      "INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)",
+      [name, icon, color]
+    );
+
+    const categories = await this.db.select(
+      "SELECT * FROM categories WHERE id = ?",
+      [result.lastInsertId]
+    ) as Category[];
+    return categories[0];
   }
 
   // === DOCUMENTOS ===
-  getDocumentsByCategory(categoryId: number): Document[] {
-    return this.db
-      .prepare(
-        "SELECT * FROM documents WHERE category_id = ? ORDER BY updated_at DESC"
-      )
-      .all(categoryId) as Document[];
+  async getDocumentsByCategory(categoryId: number): Promise<Document[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select(
+      "SELECT * FROM documents WHERE category_id = ? ORDER BY updated_at DESC",
+      [categoryId]
+    );
   }
 
-  createDocument(
+  async createDocument(
     title: string,
     description: string,
     textContent: string,
     categoryId: number
-  ): Document {
-    const result = this.db
-      .prepare(
-        `
-      INSERT INTO documents (title, description, text_content, category_id) 
-      VALUES (?, ?, ?, ?)
-    `
-      )
-      .run(title, description, textContent, categoryId);
+  ): Promise<Document> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    return this.db
-      .prepare("SELECT * FROM documents WHERE id = ?")
-      .get(result.lastInsertRowid) as Document;
+    const result = await this.db.execute(
+      "INSERT INTO documents (title, description, text_content, category_id) VALUES (?, ?, ?, ?)",
+      [title, description, textContent, categoryId]
+    );
+
+    const documents = await this.db.select(
+      "SELECT * FROM documents WHERE id = ?",
+      [result.lastInsertId]
+    ) as Document[];
+    return documents[0];
   }
 
-  updateDocument(
+  async updateDocument(
     id: number,
     title: string,
     description: string,
     textContent: string
-  ): Document {
-    this.db
-      .prepare(
-        `
-      UPDATE documents 
-      SET title = ?, description = ?, text_content = ?, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `
-      )
-      .run(title, description, textContent, id);
+  ): Promise<Document> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    return this.db
-      .prepare("SELECT * FROM documents WHERE id = ?")
-      .get(id) as Document;
+    await this.db.execute(
+      "UPDATE documents SET title = ?, description = ?, text_content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [title, description, textContent, id]
+    );
+
+    const documents = await this.db.select(
+      "SELECT * FROM documents WHERE id = ?",
+      [id]
+    ) as Document[];
+    return documents[0];
   }
 
   // === BUSCA ===
-  searchDocuments(query: string): Document[] {
-    return this.db
-      .prepare(
-        `
-      SELECT d.* FROM documents d
-      JOIN documents_fts fts ON d.id = fts.rowid
-      WHERE documents_fts MATCH ?
-      ORDER BY rank
-    `
-      )
-      .all(query) as Document[];
+  async searchDocuments(query: string): Promise<Document[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select(
+      `SELECT * FROM documents 
+       WHERE title LIKE ? OR description LIKE ? OR text_content LIKE ?
+       ORDER BY updated_at DESC`,
+      [`%${query}%`, `%${query}%`, `%${query}%`]
+    );
   }
 
   // === ANEXOS ===
-  getAttachments(documentId: number): Attachment[] {
-    return this.db
-      .prepare("SELECT * FROM attachments WHERE document_id = ?")
-      .all(documentId) as Attachment[];
+  async getAttachments(documentId: number): Promise<Attachment[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select(
+      "SELECT * FROM attachments WHERE document_id = ?",
+      [documentId]
+    );
   }
 
-  addAttachment(
+  async addAttachment(
     documentId: number,
     filename: string,
     filepath: string,
     filetype: string,
     filesize: number
-  ): Attachment {
-    const result = this.db
-      .prepare(
-        `
-      INSERT INTO attachments (document_id, filename, filepath, filetype, filesize) 
-      VALUES (?, ?, ?, ?, ?)
-    `
-      )
-      .run(documentId, filename, filepath, filetype, filesize);
+  ): Promise<Attachment> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    return this.db
-      .prepare("SELECT * FROM attachments WHERE id = ?")
-      .get(result.lastInsertRowid) as Attachment;
-  }
+    const result = await this.db.execute(
+      "INSERT INTO attachments (document_id, filename, filepath, filetype, filesize) VALUES (?, ?, ?, ?, ?)",
+      [documentId, filename, filepath, filetype, filesize]
+    );
 
-  close() {
-    this.db.close();
+    const attachments = await this.db.select(
+      "SELECT * FROM attachments WHERE id = ?",
+      [result.lastInsertId]
+    ) as Attachment[];
+    return attachments[0];
   }
 }
 

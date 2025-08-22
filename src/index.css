@@ -1,68 +1,256 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+@import "tailwindcss";
+
+/* Fontes locais */
+@font-face {
+  font-family: "Overlock";
+  src: url("/fonts/Overlock-Regular.ttf") format("truetype");
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+@font-face {
+  font-family: "Overlock";
+  src: url("/fonts/Overlock-Bold.ttf") format("truetype");
+  font-weight: 700;
 }
 
+@font-face {
+  font-family: "Overlock";
+  src: url("/fonts/Overlock-Black.ttf") format("truetype");
+  font-weight: 900;
+}
+
+/* Reset suave - sem interferir no Tailwind */
+html,
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* Fonte padrão */
+body {
+  font-family: "Overlock", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* === PALETA SAGE FOREST - MÁXIMA SAÚDE OCULAR === */
+
+:root {
+  /* Paleta principal - tons de verde natural */
+  --sage-deepest: #0e1609; /* Verde quase preto - fundo principal */
+  --sage-dark: #1d2c20; /* Verde escuro - sidebar */
+  --sage-medium: #2e462b; /* Verde médio - cards */
+  --sage-light: #5c6d5e; /* Verde acinzentado - borders/hover */
+  --sage-mist: #a0a899; /* Verde claro - texto secundário */
+
+  /* Extensões da paleta conforme documentação */
+  --sage-ash: #9b9b9b; /* Ash Gray menos saturado */
+  --sage-white: #f8f8f6; /* Cool white suave */
+  --sage-cream: #f2f1ed; /* Bege muito claro para texto */
+
+  /* Acentos naturais suaves */
+  --sage-gold: #d4c4a8; /* Dourado natural */
+  --sage-warm: #c4b59c; /* Bege quente para highlights */
+}
+
+/* Classes utilitárias Sage Forest */
+.sage-bg-deepest {
+  background-color: var(--sage-deepest);
+}
+.sage-bg-dark {
+  background-color: var(--sage-dark);
+}
+.sage-bg-medium {
+  background-color: var(--sage-medium);
+}
+.sage-bg-light {
+  background-color: var(--sage-light);
+}
+.sage-bg-mist {
+  background-color: var(--sage-mist);
+}
+.sage-bg-white {
+  background-color: var(--sage-white);
+}
+.sage-bg-gold {
+  background-color: var(--sage-gold);
+}
+
+.sage-text-white {
+  color: var(--sage-white);
+}
+.sage-text-cream {
+  color: var(--sage-cream);
+}
+.sage-text-mist {
+  color: var(--sage-mist);
+}
+.sage-text-light {
+  color: var(--sage-light);
+}
+.sage-text-gold {
+  color: var(--sage-gold);
+}
+.sage-text-warm {
+  color: var(--sage-warm);
+}
+
+.sage-border {
+  border-color: var(--sage-light);
+}
+.sage-border-mist {
+  border-color: var(--sage-mist);
+}
+
+/* Botões com gradientes naturais e suaves */
+.sage-btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--sage-medium) 0%,
+    var(--sage-light) 100%
+  );
+  color: var(--sage-white);
+  border: 1px solid var(--sage-light);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(14, 22, 9, 0.3);
+}
+
+.sage-btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--sage-light) 0%,
+    var(--sage-gold) 100%
+  );
+  box-shadow: 0 4px 16px rgba(14, 22, 9, 0.4);
+  transform: translateY(-1px);
+  border-color: var(--sage-gold);
+}
+
+.sage-btn-secondary {
+  background: linear-gradient(
+    135deg,
+    var(--sage-dark) 0%,
+    var(--sage-medium) 100%
+  );
+  color: var(--sage-cream);
+  border: 1px solid var(--sage-light);
+  transition: all 0.3s ease;
+}
+
+.sage-btn-secondary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--sage-medium) 0%,
+    var(--sage-light) 100%
+  );
+  border-color: var(--sage-mist);
+}
+
+/* Cards com sombras naturais */
+.sage-card {
+  background: linear-gradient(
+    135deg,
+    var(--sage-medium) 0%,
+    var(--sage-dark) 100%
+  );
+  border: 1px solid var(--sage-light);
+  box-shadow: 0 4px 12px rgba(14, 22, 9, 0.2);
+  transition: all 0.3s ease;
+}
+
+.sage-card:hover {
+  background: linear-gradient(
+    135deg,
+    var(--sage-light) 0%,
+    var(--sage-medium) 100%
+  );
+  box-shadow: 0 8px 24px rgba(14, 22, 9, 0.3);
+  border-color: var(--sage-mist);
+  transform: translateY(-2px);
+}
+
+/* Categorias com estados naturais */
+.sage-category {
+  background: linear-gradient(
+    135deg,
+    var(--sage-medium) 0%,
+    var(--sage-dark) 100%
+  );
+  border: 1px solid var(--sage-light);
+  transition: all 0.3s ease;
+}
+
+.sage-category:hover {
+  background: linear-gradient(
+    135deg,
+    var(--sage-light) 0%,
+    var(--sage-medium) 100%
+  );
+  border-color: var(--sage-mist);
+}
+
+.sage-category.selected {
+  background: linear-gradient(
+    135deg,
+    var(--sage-gold) 0%,
+    var(--sage-warm) 100%
+  );
+  border-color: var(--sage-gold);
+  color: var(--sage-deepest);
+  box-shadow: 0 4px 16px rgba(212, 196, 168, 0.3);
+}
+
+/* Header com gradiente suave */
+.sage-header {
+  background: linear-gradient(
+    135deg,
+    var(--sage-deepest) 0%,
+    var(--sage-dark) 50%,
+    var(--sage-medium) 100%
+  );
+  border-bottom: 2px solid var(--sage-light);
+  box-shadow: 0 4px 16px rgba(14, 22, 9, 0.3);
+}
+
+/* Input de busca ultra suave */
+.sage-search {
+  background-color: var(--sage-white);
+  color: var(--sage-deepest);
+  border: 2px solid var(--sage-light);
+  transition: all 0.3s ease;
+}
+
+.sage-search:focus {
+  border-color: var(--sage-gold);
+  box-shadow: 0 0 0 3px rgba(212, 196, 168, 0.2);
+  outline: none;
+}
+
+.sage-search::placeholder {
+  color: var(--sage-light);
+}
+
+/* Tags de arquivo com tons naturais */
+.sage-tag-text {
+  background: linear-gradient(135deg, var(--sage-light), var(--sage-medium));
+  color: var(--sage-white);
+}
+
+.sage-tag-image {
+  background: linear-gradient(135deg, var(--sage-medium), var(--sage-light));
+  color: var(--sage-cream);
+}
+
+.sage-tag-pdf {
+  background: linear-gradient(135deg, var(--sage-warm), var(--sage-gold));
+  color: var(--sage-deepest);
+}
+
+.sage-tag-video {
+  background: linear-gradient(135deg, var(--sage-gold), var(--sage-mist));
+  color: var(--sage-deepest);
 }

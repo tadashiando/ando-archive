@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "Ando Archive",
+    "tagline": "Sua biblioteca pessoal de conhecimento",
+    "loading": "Carregando Ando Archive...",
+    "loadingSubtitle": "Preparando sua biblioteca"
+  },
+  "navigation": {
+    "categories": "Categorias",
+    "search": "Buscar documentos...",
+    "create": "Novo Documento",
+    "newCategory": "Nova Categoria"
+  },
+  "categories": {
+    "recipes": "Receitas",
+    "construction": "Construção", 
+    "architecture": "Arquitetura",
+    "education": "Educação",
+    "documentsCount": "{{count}} documento",
+    "documentsCount_plural": "{{count}} documentos",
+    "documentsInCategory": "nesta categoria"
+  },
+  "documents": {
+    "create": "Novo Documento",
+    "createSubtitle": {
+      "recipes": "Adicionar uma nova receita",
+      "construction": "Documentar projeto de construção", 
+      "architecture": "Criar projeto arquitetônico",
+      "default": "Adicionar novo conhecimento"
+    },
+    "noDescription": "Sem descrição",
+    "view": "Visualizar",
+    "edit": "Editar"
+  },
+  "modal": {
+    "createDocument": {
+      "title": "Criar Documento",
+      "subtitle": "na categoria {{category}}",
+      "titleField": "Título",
+      "titlePlaceholder": "Como fazer pão caseiro, Projeto da casa nova...",
+      "descriptionField": "Descrição (opcional)",
+      "descriptionPlaceholder": "Uma breve descrição do documento...",
+      "contentField": "Conteúdo",
+      "contentPlaceholder": "Escreva o conteúdo aqui...",
+      "attachmentsField": "Anexos (opcional)",
+      "attachmentsPlaceholder": "Clique para adicionar anexos",
+      "attachmentsSubtitle": "Imagens, vídeos, PDFs, documentos",
+      "attachmentsSelected": "Anexos selecionados:",
+      "cancel": "Cancelar",
+      "create": "Criar Documento",
+      "creating": "Criando..."
+    }
+  },
+  "editor": {
+    "bold": "Negrito",
+    "italic": "Itálico", 
+    "heading": "Título",
+    "bulletList": "Lista"
+  },
+  "fileTypes": {
+    "text": "Texto",
+    "image": "Imagem",
+    "pdf": "PDF",
+    "video": "Vídeo"
+  },
+  "common": {
+    "required": "*",
+    "optional": "(opcional)",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "view": "Visualizar",
+    "close": "Fechar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "add": "Adicionar",
+    "browserNotSupported": "Seu navegador não suporta este tipo de arquivo",
+    "openPdf": "Abrir PDF"
+  }
+}
