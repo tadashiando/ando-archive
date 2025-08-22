@@ -21,7 +21,14 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["default", "fs-scope"]
+      "capabilities": ["default", "fs-scope"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["$APPDATA/ando-archive/**"],
+          "deny": []
+        }
+      }
     }
   },
   "bundle": {

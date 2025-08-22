@@ -3,10 +3,10 @@ import { useTranslation } from "react-i18next";
 import { db } from "../../database";
 import type { Category, Document } from "../../database";
 import { Spinner, DocumentCard, CreateDocumentCard } from "../UI";
-import DocumentEditor from "../Documents/DocumentEditor";
+import DocumentEditor from "../Documents/Editor/DocumentEditor";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import DocumentViewer from "../Documents/DocumentViewer";
+import DocumentViewer from "../Documents/Viewer/DocumentViewer";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
