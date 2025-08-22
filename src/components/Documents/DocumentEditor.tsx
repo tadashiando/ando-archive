@@ -22,6 +22,8 @@ interface AttachmentFile {
   file: File;
   preview?: string;
   type: "image" | "video" | "pdf" | "other";
+  existingId?: number;
+  existingPath?: string;
 }
 
 interface DocumentEditorProps {
@@ -56,26 +58,49 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     }
   }, [editingDocumentId, mode]);
 
-  const loadDocumentForEditing = async () => {
-    if (!editingDocumentId) return;
-
-    setIsLoading(true);
-    try {
-      const document = await db.getDocumentById(editingDocumentId);
-      if (document) {
-        setTitle(document.title);
-        // Carregar conteúdo no editor
-        if (editor) {
-          editor.commands.setContent(document.text_content);
-        }
-        // TODO: Carregar anexos existentes
-      }
-    } catch (error) {
-      console.error("Erro ao carregar documento para edição:", error);
-    } finally {
-      setIsLoading(false);
+  const loadExistingAttachments = async (documentId: number) => {
+  try {
+    const existingAttachments = await db.getAttachments(documentId);
+    
+    const attachmentFiles: AttachmentFile[] = existingAttachments.map(att => ({
+      file: new File([], att.filename, { type: att.filetype }),
+      type: att.filetype,
+      existingId: att.id,
+      // Usar caminho relativo para o asset protocol
+      existingPath: att.filepath.replace(/.*attachments\//, 'attachments/')
+    }));
+    
+    setAttachments(attachmentFiles);
+    if (attachmentFiles.length > 0) {
+      setSelectedAttachment(attachmentFiles[0]);
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar anexos existentes:', error);
+  }
+};
+
+  const loadDocumentForEditing = async () => {
+  if (!editingDocumentId) return;
+  
+  setIsLoading(true);
+  try {
+    const document = await db.getDocumentById(editingDocumentId);
+    if (document) {
+      setTitle(document.title);
+      // Carregar conteúdo no editor
+      if (editor) {
+        editor.commands.setContent(document.text_content);
+      }
+      
+      // ADICIONAR: Carregar anexos existentes
+      await loadExistingAttachments(editingDocumentId);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar documento para edição:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Editor TipTap
   const editor = useEditor({
@@ -161,84 +186,116 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   };
 
   const renderPreview = () => {
-    if (!selectedAttachment) {
-      return (
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <span className="text-6xl mb-4 block">📎</span>
-            <p className="sage-text-mist">
-              {t("modal.createDocument.attachmentsPlaceholder")}
-            </p>
-          </div>
+  if (!selectedAttachment) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <span className="text-6xl mb-4 block">📎</span>
+          <p className="sage-text-mist">
+            {t("modal.createDocument.attachmentsPlaceholder")}
+          </p>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    const { file, preview, type } = selectedAttachment;
+  const { file, preview, type, existingPath } = selectedAttachment;
 
-    switch (type) {
-      case "image":
-        return preview ? (
+  switch (type) {
+    case "image":
+      // Se é anexo existente, usar o caminho salvo
+      if (existingPath) {
+        return (
           <img
-            src={preview}
+            src={`asset://localhost/${existingPath}`}
             alt={file.name}
             className="w-full h-full object-contain rounded-xl"
+            onError={(e) => {
+              console.error('Erro ao carregar imagem:', existingPath);
+              e.currentTarget.style.display = 'none';
+            }}
           />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <span className="sage-text-mist">{t("common.loading")}</span>
-          </div>
         );
+      }
+      // Se é anexo novo, usar preview
+      return preview ? (
+        <img
+          src={preview}
+          alt={file.name}
+          className="w-full h-full object-contain rounded-xl"
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <span className="sage-text-mist">{t("common.loading")}</span>
+        </div>
+      );
 
-      case "video":
+    case "video":
+      // Para vídeos existentes
+      if (existingPath) {
         return (
           <video
             controls
             className="w-full h-full rounded-xl"
-            src={URL.createObjectURL(file)}
+            src={`asset://localhost/${existingPath}`}
+            preload="metadata"
           >
             {t("common.browserNotSupported")}
           </video>
         );
+      }
+      // Para vídeos novos
+      return (
+        <video
+          controls
+          className="w-full h-full rounded-xl"
+          src={URL.createObjectURL(file)}
+          preload="metadata"
+        >
+          {t("common.browserNotSupported")}
+        </video>
+      );
 
-      case "pdf":
-        return (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <DocumentIcon className="h-16 w-16 mx-auto sage-text-mist mb-4" />
-              <p className="sage-text-cream font-bold">{file.name}</p>
-              <p className="sage-text-mist text-sm">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  const url = URL.createObjectURL(file);
-                  window.open(url, "_blank");
-                }}
-              >
-                {t("common.openPdf")}
-              </Button>
-            </div>
+    case "pdf":
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <DocumentIcon className="h-16 w-16 mx-auto sage-text-mist mb-4" />
+            <p className="sage-text-cream font-bold">{file.name}</p>
+            <p className="sage-text-mist text-sm">
+              {existingPath ? 'Arquivo salvo' : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                const url = existingPath 
+                  ? `asset://localhost/${existingPath}`
+                  : URL.createObjectURL(file);
+                window.open(url, "_blank");
+              }}
+            >
+              {t("common.openPdf")}
+            </Button>
           </div>
-        );
+        </div>
+      );
 
-      default:
-        return (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <DocumentTextIcon className="h-16 w-16 mx-auto sage-text-mist mb-4" />
-              <p className="sage-text-cream font-bold">{file.name}</p>
-              <p className="sage-text-mist text-sm">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
+    default:
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <DocumentTextIcon className="h-16 w-16 mx-auto sage-text-mist mb-4" />
+            <p className="sage-text-cream font-bold">{file.name}</p>
+            <p className="sage-text-mist text-sm">
+              {existingPath ? 'Arquivo salvo' : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+            </p>
           </div>
-        );
-    }
-  };
+        </div>
+      );
+  }
+};
 
   const saveAttachmentFiles = async (documentId: number) => {
     if (attachments.length === 0) return;
