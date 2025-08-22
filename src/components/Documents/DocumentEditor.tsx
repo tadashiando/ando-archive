@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { writeFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import {
   XMarkIcon,
   DocumentTextIcon,
@@ -238,33 +240,85 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     }
   };
 
+  const saveAttachmentFiles = async (documentId: number) => {
+    if (attachments.length === 0) return;
+
+    try {
+      // Obter diretório de dados da aplicação
+      const appDir = await appDataDir();
+      const attachmentsDir = await join(
+        appDir,
+        "ando-archive",
+        "attachments",
+        documentId.toString()
+      );
+
+      // Criar diretório se não existir
+      if (!(await exists(attachmentsDir))) {
+        await mkdir(attachmentsDir, { recursive: true });
+      }
+
+      // Salvar cada arquivo e registrar no banco
+      for (const attachment of attachments) {
+        const { file } = attachment;
+        const fileName = `${Date.now()}_${file.name}`;
+        const filePath = `${attachmentsDir}/${fileName}`;
+
+        // Converter File para Uint8Array
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        // Salvar arquivo
+        await writeFile(filePath, uint8Array);
+
+        // Registrar no banco
+        await db.addAttachment(
+          documentId,
+          file.name,
+          filePath,
+          file.type,
+          file.size
+        );
+      }
+
+      console.log(
+        `Salvos ${attachments.length} anexos para documento ${documentId}`
+      );
+    } catch (error) {
+      console.error("Erro ao salvar anexos:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !editor) return;
 
     setIsLoading(true);
     try {
       const textContent = editor.getHTML();
+      let documentId: number;
 
       if (mode === "edit" && editingDocumentId) {
         // Atualizar documento existente
         await db.updateDocument(
           editingDocumentId,
           title.trim(),
-          "", // Sem descrição
+          "",
           textContent
         );
+        documentId = editingDocumentId;
       } else {
         // Criar novo documento
-        await db.createDocument(
+        const newDocument = await db.createDocument(
           title.trim(),
-          "", // Sem descrição
+          "",
           textContent,
           selectedCategory.id
         );
+        documentId = newDocument.id;
       }
 
-      // TODO: Salvar anexos
-      console.log("Anexos para salvar:", attachments);
+      // Salvar anexos
+      await saveAttachmentFiles(documentId);
 
       onDocumentCreated();
     } catch (error) {
