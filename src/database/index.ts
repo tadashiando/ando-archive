@@ -83,9 +83,9 @@ class DatabaseManager {
   private async insertDefaultCategories() {
     if (!this.db) return;
 
-    const categories = await this.db.select(
+    const categories = (await this.db.select(
       "SELECT COUNT(*) as count FROM categories"
-    ) as { count: number }[];
+    )) as { count: number }[];
     if (categories[0].count === 0) {
       await this.db.execute(`
         INSERT INTO categories (name, icon, color) VALUES 
@@ -115,10 +115,10 @@ class DatabaseManager {
       [name, icon, color]
     );
 
-    const categories = await this.db.select(
+    const categories = (await this.db.select(
       "SELECT * FROM categories WHERE id = ?",
       [result.lastInsertId]
-    ) as Category[];
+    )) as Category[];
     return categories[0];
   }
 
@@ -144,10 +144,10 @@ class DatabaseManager {
       [title, description, textContent, categoryId]
     );
 
-    const documents = await this.db.select(
+    const documents = (await this.db.select(
       "SELECT * FROM documents WHERE id = ?",
       [result.lastInsertId]
-    ) as Document[];
+    )) as Document[];
     return documents[0];
   }
 
@@ -164,13 +164,27 @@ class DatabaseManager {
       [title, description, textContent, id]
     );
 
-    const documents = await this.db.select(
+    const documents = (await this.db.select(
       "SELECT * FROM documents WHERE id = ?",
       [id]
-    ) as Document[];
+    )) as Document[];
     return documents[0];
   }
 
+  // Adicionar no DatabaseManager
+  async getDocumentById(id: number): Promise<Document | null> {
+    if (!this.db) throw new Error("Database not initialized");
+    const documents = (await this.db.select(
+      "SELECT * FROM documents WHERE id = ?",
+      [id]
+    )) as Document[];
+    return documents.length > 0 ? documents[0] : null;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    await this.db.execute("DELETE FROM documents WHERE id = ?", [id]);
+  }
   // === BUSCA ===
   async searchDocuments(query: string): Promise<Document[]> {
     if (!this.db) throw new Error("Database not initialized");
@@ -205,10 +219,10 @@ class DatabaseManager {
       [documentId, filename, filepath, filetype, filesize]
     );
 
-    const attachments = await this.db.select(
+    const attachments = (await this.db.select(
       "SELECT * FROM attachments WHERE id = ?",
       [result.lastInsertId]
-    ) as Attachment[];
+    )) as Attachment[];
     return attachments[0];
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   XMarkIcon,
   DocumentTextIcon,
@@ -28,6 +28,8 @@ interface DocumentEditorProps {
   onDocumentCreated: () => void;
   categories: Category[];
   onCategoryChange: (category: Category) => void;
+  editingDocumentId?: number;
+  mode?: "create" | "edit";
 }
 
 const DocumentEditor: React.FC<DocumentEditorProps> = ({
@@ -36,6 +38,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   onDocumentCreated,
   categories,
   onCategoryChange,
+  editingDocumentId,
+  mode = "create",
 }) => {
   const { t } = useTranslation();
   const [title, setTitle] = useState("");
@@ -43,6 +47,33 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (mode === "edit" && editingDocumentId) {
+      loadDocumentForEditing();
+    }
+  }, [editingDocumentId, mode]);
+
+  const loadDocumentForEditing = async () => {
+    if (!editingDocumentId) return;
+
+    setIsLoading(true);
+    try {
+      const document = await db.getDocumentById(editingDocumentId);
+      if (document) {
+        setTitle(document.title);
+        // Carregar conteúdo no editor
+        if (editor) {
+          editor.commands.setContent(document.text_content);
+        }
+        // TODO: Carregar anexos existentes
+      }
+    } catch (error) {
+      console.error("Erro ao carregar documento para edição:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Editor TipTap
   const editor = useEditor({
@@ -213,19 +244,31 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     setIsLoading(true);
     try {
       const textContent = editor.getHTML();
-      await db.createDocument(
-        title.trim(),
-        "", // Sem descrição
-        textContent,
-        selectedCategory.id
-      );
+
+      if (mode === "edit" && editingDocumentId) {
+        // Atualizar documento existente
+        await db.updateDocument(
+          editingDocumentId,
+          title.trim(),
+          "", // Sem descrição
+          textContent
+        );
+      } else {
+        // Criar novo documento
+        await db.createDocument(
+          title.trim(),
+          "", // Sem descrição
+          textContent,
+          selectedCategory.id
+        );
+      }
 
       // TODO: Salvar anexos
       console.log("Anexos para salvar:", attachments);
 
       onDocumentCreated();
     } catch (error) {
-      console.error("Erro ao criar documento:", error);
+      console.error("Erro ao salvar documento:", error);
     } finally {
       setIsLoading(false);
     }
@@ -248,7 +291,11 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
         {/* Header do Editor */}
         <Header
           mode="editor"
-          editorTitle={t("modal.createDocument.title")}
+          editorTitle={
+            mode === "edit"
+              ? t("documents.edit")
+              : t("modal.createDocument.title")
+          }
           editorSubtitle={t("modal.createDocument.subtitle", {
             category: selectedCategory.name,
           })}
@@ -257,7 +304,11 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           saveButtonDisabled={isLoading || !title.trim()}
           saveButtonText={
             isLoading
-              ? t("modal.createDocument.creating")
+              ? mode === "edit"
+                ? "Salvando..."
+                : t("modal.createDocument.creating")
+              : mode === "edit"
+              ? t("common.save")
               : t("modal.createDocument.create")
           }
           isLoading={isLoading}

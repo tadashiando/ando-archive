@@ -6,6 +6,7 @@ import { Spinner, DocumentCard, CreateDocumentCard } from "../UI";
 import DocumentEditor from "../Documents/DocumentEditor";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import DocumentViewer from "../Documents/DocumentViewer";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -20,6 +21,12 @@ const MainLayout: React.FC = () => {
     [key: number]: number;
   }>({});
   const [isEditorMode, setIsEditorMode] = useState(false);
+  const [viewerMode, setViewerMode] = useState<"list" | "view" | "edit">(
+    "list"
+  );
+  const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     loadCategories();
@@ -97,6 +104,22 @@ const MainLayout: React.FC = () => {
 
   const handleCloseEditor = () => {
     setIsEditorMode(false);
+  };
+
+  const handleViewDocument = (documentId: number) => {
+    setSelectedDocumentId(documentId);
+    setViewerMode("view");
+  };
+
+  const handleEditDocument = (documentId: number) => {
+    setSelectedDocumentId(documentId);
+    setIsEditorMode(true);
+    setViewerMode("list"); // Não vai para viewer, vai direto pro editor
+  };
+
+  const handleCloseViewer = () => {
+    setViewerMode("list");
+    setSelectedDocumentId(null);
   };
 
   const handleNewCategory = () => {
@@ -180,13 +203,24 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Conteúdo Condicional */}
-      {isEditorMode && selectedCategory ? (
+      {viewerMode === "view" && selectedDocumentId && selectedCategory ? (
+        <DocumentViewer
+          documentId={selectedDocumentId}
+          selectedCategory={selectedCategory}
+          onClose={handleCloseViewer}
+          onEdit={handleEditDocument}
+          categories={categories}
+          onCategoryChange={setSelectedCategory}
+        />
+      ) : isEditorMode && selectedCategory ? (
         <DocumentEditor
           selectedCategory={selectedCategory}
           onClose={handleCloseEditor}
           onDocumentCreated={handleDocumentCreated}
           categories={categories}
           onCategoryChange={setSelectedCategory}
+          editingDocumentId={selectedDocumentId || undefined}
+          mode={selectedDocumentId ? "edit" : "create"}
         />
       ) : (
         <div className="flex flex-1 overflow-hidden">
@@ -218,7 +252,7 @@ const MainLayout: React.FC = () => {
                         {t("categories.documentsCount", {
                           count: documents.length,
                         })}{" "}
-                        {t('categories.documentsInCategory')}
+                        {t("categories.documentsInCategory")}
                       </p>
                     </div>
                   </div>
@@ -238,8 +272,8 @@ const MainLayout: React.FC = () => {
                         }
                         date={formatDate(document.created_at)}
                         attachmentTypes={attachmentTypes}
-                        onView={() => {}} // TODO: implementar visualização
-                        onEdit={() => {}} // TODO: implementar edição
+                        onView={() => handleViewDocument(document.id)}
+                        onEdit={() => handleEditDocument(document.id)}
                       />
                     );
                   })}
