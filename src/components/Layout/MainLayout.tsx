@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { db } from "../../database";
 import type { Category, Document } from "../../database";
-import { Spinner, DocumentCard, CreateDocumentCard } from "../UI";
+import { Spinner, DocumentCard, CreateDocumentCard, Dialog } from "../UI";
+import {
+  NewCategoryModal,
+  CategorySelectModal,
+  CategoryManagementModal,
+} from "../Category";
+import { UnsavedChangesModal } from "../UI";
 import DocumentEditor from "../Documents/Editor/DocumentEditor";
 import DocumentViewer from "../Documents/Viewer/DocumentViewer";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import Dialog from "../UI/Dialog";
-import CategorySelectDialog from "../UI/CategorySelectDialog";
 import { useMenuEvents } from "../../hooks/useMenuEvents";
-import NewCategoryDialog from "../UI/NewCategoryDialog";
-import CategoryManagementDialog from "../UI/CategoryManagementDialog";
 import { getCategoryIcon } from "../../utils/categoryIcons";
 
 const MainLayout: React.FC = () => {
@@ -44,20 +46,20 @@ const MainLayout: React.FC = () => {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Dialog states
+  // Dialog states - refactored
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
     null
   );
   const [isDeleting, setIsDeleting] = useState(false);
-  const [categorySelectOpen, setCategorySelectOpen] = useState(false);
+  const [categorySelectModalOpen, setCategorySelectModalOpen] = useState(false);
+  const [newCategoryModalOpen, setNewCategoryModalOpen] = useState(false);
+  const [categoryManagementModalOpen, setCategoryManagementModalOpen] =
+    useState(false);
+  const [unsavedChangesModalOpen, setUnsavedChangesModalOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingCategoryChange, setPendingCategoryChange] =
     useState<Category | null>(null);
-  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] =
-    useState(false);
-  const [newCategoryDialogOpen, setNewCategoryDialogOpen] = useState(false);
-  const [categoryManagementOpen, setCategoryManagementOpen] = useState(false);
 
   // Determine sidebar collapse based on view mode
   const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
@@ -67,7 +69,7 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -91,11 +93,11 @@ const MainLayout: React.FC = () => {
     }
   }, [categories]);
 
-  // Menu event handlers
+  // Menu event handlers - refactored
   useMenuEvents({
-    onNewDocument: () => setCategorySelectOpen(true),
-    onNewCategory: () => setNewCategoryDialogOpen(true),
-    onSettings: () => setCategoryManagementOpen(true),
+    onNewDocument: () => setCategorySelectModalOpen(true),
+    onNewCategory: () => setNewCategoryModalOpen(true),
+    onSettings: () => setCategoryManagementModalOpen(true),
     onToggleSidebar: () => setSidebarVisible(!sidebarVisible),
     onSearch: () => {
       const searchInput = document.querySelector(
@@ -147,11 +149,11 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  // Navigation handlers
+  // Navigation handlers - refactored
   const handleBackToList = () => {
     if (viewMode === "editor" && hasUnsavedChanges) {
       setPendingCategoryChange(null);
-      setUnsavedChangesDialogOpen(true);
+      setUnsavedChangesModalOpen(true);
     } else {
       setViewMode("list");
       setSelectedDocumentId(null);
@@ -169,7 +171,7 @@ const MainLayout: React.FC = () => {
     } else if (viewMode === "editor" && hasUnsavedChanges) {
       // Editor with unsaved changes - ask for confirmation
       setPendingCategoryChange(category);
-      setUnsavedChangesDialogOpen(true);
+      setUnsavedChangesModalOpen(true);
     } else {
       // Safe to change category (list mode or editor without changes)
       setSelectedCategory(category);
@@ -188,7 +190,7 @@ const MainLayout: React.FC = () => {
       setEditingDocumentId(null);
       setHasUnsavedChanges(false);
     } else {
-      setCategorySelectOpen(true);
+      setCategorySelectModalOpen(true);
     }
   };
 
@@ -250,10 +252,30 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  // Unsaved changes dialog handlers
+  // Category management handlers
+  const handleCreateCategory = async (
+    name: string,
+    icon: string,
+    color: string
+  ) => {
+    try {
+      await db.createCategory(name, icon, color);
+      await loadCategories();
+      console.log("Category created successfully");
+    } catch (error) {
+      console.error("Error creating category:", error);
+      throw error;
+    }
+  };
+
+  const handleCategoryManagementUpdate = () => {
+    loadCategories();
+  };
+
+  // Unsaved changes dialog handlers - refactored
   const handleDiscardChanges = () => {
     setHasUnsavedChanges(false);
-    setUnsavedChangesDialogOpen(false);
+    setUnsavedChangesModalOpen(false);
     setViewMode("list");
     setEditingDocumentId(null);
     if (pendingCategoryChange) {
@@ -265,7 +287,7 @@ const MainLayout: React.FC = () => {
   const handleSaveAndContinue = async () => {
     // TODO: Trigger save in editor component
     setHasUnsavedChanges(false);
-    setUnsavedChangesDialogOpen(false);
+    setUnsavedChangesModalOpen(false);
     setViewMode("list");
     setEditingDocumentId(null);
     if (pendingCategoryChange) {
@@ -274,29 +296,9 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const handleCancelCategoryChange = () => {
-    setUnsavedChangesDialogOpen(false);
+  const handleCancelUnsavedChanges = () => {
+    setUnsavedChangesModalOpen(false);
     setPendingCategoryChange(null);
-  };
-
-  const handleCreateCategory = async (
-    name: string,
-    icon: string,
-    color: string
-  ) => {
-    try {
-      await db.createCategory(name, icon, color);
-      await loadCategories(); // Refresh categories
-      // TODO: Show success toast
-      console.log("Category created successfully");
-    } catch (error) {
-      console.error("Error creating category:", error);
-      throw error; // Let dialog handle the error
-    }
-  };
-
-  const handleCategoryManagementUpdate = () => {
-    loadCategories(); // Refresh categories when management dialog makes changes
   };
 
   // Helper functions
@@ -403,12 +405,17 @@ const MainLayout: React.FC = () => {
                 <>
                   <div className="mb-8">
                     <div className="flex items-center space-x-4 mb-4">
-                      <span className="text-5xl">
-                        {getCategoryIcon(
-                          selectedCategory.name,
-                          selectedCategory.icon
-                        )}
-                      </span>
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{ backgroundColor: selectedCategory.color }}
+                      >
+                        <div className="text-white text-2xl">
+                          {getCategoryIcon(
+                            selectedCategory.name,
+                            selectedCategory.icon
+                          )}
+                        </div>
+                      </div>
                       <div>
                         <h2 className="text-4xl font-black sage-text-white">
                           {selectedCategory.name}
@@ -463,14 +470,41 @@ const MainLayout: React.FC = () => {
         </div>
       </div>
 
-      {/* Dialogs */}
-      <CategorySelectDialog
-        isOpen={categorySelectOpen}
-        onClose={() => setCategorySelectOpen(false)}
+      {/* Refactored Dialogs/Modals */}
+      <CategorySelectModal
+        isOpen={categorySelectModalOpen}
+        onClose={() => setCategorySelectModalOpen(false)}
         onCategorySelect={handleCategorySelected}
         categories={categories}
       />
 
+      <NewCategoryModal
+        isOpen={newCategoryModalOpen}
+        onClose={() => setNewCategoryModalOpen(false)}
+        onCategoryCreate={handleCreateCategory}
+        existingCategories={categories.map((cat) => cat.name)}
+      />
+
+      <CategoryManagementModal
+        isOpen={categoryManagementModalOpen}
+        onClose={() => setCategoryManagementModalOpen(false)}
+        categories={categories}
+        onCategoryUpdate={handleCategoryManagementUpdate}
+        onNewCategory={() => {
+          setCategoryManagementModalOpen(false);
+          setNewCategoryModalOpen(true);
+        }}
+      />
+
+      <UnsavedChangesModal
+        isOpen={unsavedChangesModalOpen}
+        onClose={handleCancelUnsavedChanges}
+        onDiscard={handleDiscardChanges}
+        onSave={handleSaveAndContinue}
+        isLoading={false}
+      />
+
+      {/* Document Delete Dialog */}
       <Dialog
         isOpen={deleteDialogOpen}
         onClose={() => {
@@ -488,70 +522,6 @@ const MainLayout: React.FC = () => {
         onConfirm={handleConfirmDelete}
         variant="danger"
         isLoading={isDeleting}
-      />
-
-      <Dialog
-        isOpen={unsavedChangesDialogOpen}
-        onClose={handleCancelCategoryChange}
-        title={t("editor.unsavedChangesTitle")}
-        description={t("editor.unsavedChangesDescription")}
-        confirmText={t("editor.saveAndContinue")}
-        cancelText={t("common.cancel")}
-        onConfirm={handleSaveAndContinue}
-        variant="default"
-      />
-
-      {/* Custom unsaved changes dialog with three buttons */}
-      {unsavedChangesDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md sage-bg-dark sage-border border-2 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-xl font-bold sage-text-white mb-2">
-              {t("editor.unsavedChangesTitle")}
-            </h3>
-            <p className="sage-text-mist mb-6">
-              {t("editor.unsavedChangesDescription")}
-            </p>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleDiscardChanges}
-                className="px-4 py-2 sage-btn-secondary rounded-lg"
-              >
-                {t("editor.discardChanges")}
-              </button>
-              <button
-                onClick={handleCancelCategoryChange}
-                className="px-4 py-2 sage-btn-secondary rounded-lg"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                onClick={handleSaveAndContinue}
-                className="px-4 py-2 sage-btn-primary rounded-lg"
-              >
-                {t("editor.saveAndContinue")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Category Dialogs */}
-      <NewCategoryDialog
-        isOpen={newCategoryDialogOpen}
-        onClose={() => setNewCategoryDialogOpen(false)}
-        onCategoryCreate={handleCreateCategory}
-        existingCategories={categories.map((cat) => cat.name)}
-      />
-
-      <CategoryManagementDialog
-        isOpen={categoryManagementOpen}
-        onClose={() => setCategoryManagementOpen(false)}
-        categories={categories}
-        onCategoryUpdate={handleCategoryManagementUpdate}
-        onNewCategory={() => {
-          setCategoryManagementOpen(false);
-          setNewCategoryDialogOpen(true);
-        }}
       />
     </div>
   );

@@ -408,7 +408,10 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = "md", className }) => {
   );
 };
 
-export { FAIcon } from './FAICon';
+export { default as Dialog } from './Dialog';
+export { default as FormModal } from './FormModal';  
+export { default as UnsavedChangesModal } from './UnsavedChangesModal';
+export { FAIcon } from './FAIcon';
 
 // === CONTAINER COMPONENT ===
 export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
