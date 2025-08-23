@@ -1,21 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-  PlusIcon,
-  ChevronLeftIcon,
+  XMarkIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Badge, IconButton } from "../UI";
+import { Card, Badge, IconButton } from "../UI";
 import type { Category } from "../../database";
 
 interface SidebarProps {
   categories: Category[];
   selectedCategory: Category | null;
   onCategoryChange: (category: Category) => void;
-  onNewCategory?: () => void;
   categoryCounts?: { [key: number]: number };
-  mode?: "normal" | "editor";
-  isCollapsible?: boolean;
+  mode?: "main" | "editor" | "viewer";
+  onClose?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
   className?: string;
 }
 
@@ -23,14 +24,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   categories,
   selectedCategory,
   onCategoryChange,
-  onNewCategory,
   categoryCounts = {},
-  mode = "normal",
-  isCollapsible = false,
+  mode = "main",
+  onClose,
+  isCollapsed: propIsCollapsed,
+  onToggleCollapse,
   className = "",
 }) => {
   const { t } = useTranslation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Use prop value if provided, otherwise determine based on mode
+  const isCollapsed =
+    propIsCollapsed ?? (mode === "editor" || mode === "viewer");
+  const showCounts = mode === "main" && !isCollapsed;
+  const showCloseButton = mode === "viewer" && !isCollapsed;
+  const showToggleButton =
+    (mode === "editor" || mode === "viewer") && onToggleCollapse;
 
   const getCategoryIcon = (categoryName: string) => {
     switch (categoryName) {
@@ -52,47 +61,68 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarWidth = isCollapsed ? "w-16" : "w-80";
-  const showCounts = mode === "normal" && !isCollapsed;
-  const showNewCategoryButton =
-    mode === "normal" && !isCollapsed && onNewCategory;
 
   return (
     <aside
       className={`
-      sage-bg-dark sage-border border-r-2 transition-all duration-300 
-      ${sidebarWidth} overflow-hidden flex flex-col ${className}
-    `}
+        sage-bg-dark sage-border border-r-2 transition-all duration-300 
+        ${sidebarWidth} overflow-hidden flex flex-col ${className}
+      `}
     >
       {/* Header da Sidebar */}
-      <div className="p-3 border-b sage-border flex items-center justify-between">
-        {!isCollapsed && (
-          <h2
-            className={`font-bold sage-text-cream flex items-center ${
-              mode === "editor" ? "text-base" : "text-xl"
-            }`}
-          >
-            <span
-              className={`mr-2 ${mode === "editor" ? "text-xl" : "text-2xl"}`}
-            >
-              🗂️
-            </span>
-            {t("navigation.categories")}
-          </h2>
-        )}
+      <div className="p-3 border-b sage-border">
+        <div className="flex items-center justify-between">
+          {!isCollapsed && (
+            <h2 className="font-bold sage-text-cream flex items-center text-xl">
+              <span className="text-2xl mr-2">🗂️</span>
+              {t("navigation.categories")}
+            </h2>
+          )}
 
-        {isCollapsible && (
-          <IconButton
-            variant="ghost"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            icon={
-              isCollapsed ? (
-                <ChevronRightIcon className="h-5 w-5" />
-              ) : (
-                <ChevronLeftIcon className="h-5 w-5" />
-              )
-            }
-            label={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-          />
+          {isCollapsed && (
+            <div className="w-full flex justify-center">
+              <span className="text-2xl">🗂️</span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {!isCollapsed && (
+            <div className="flex items-center space-x-1">
+              {showToggleButton && (
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleCollapse}
+                  icon={<ChevronLeftIcon className="h-4 w-4" />}
+                  label="Colapsar sidebar"
+                />
+              )}
+
+              {showCloseButton && (
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  icon={<XMarkIcon className="h-4 w-4" />}
+                  label={t("common.close")}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Collapsed toggle button - positioned at bottom of header */}
+        {isCollapsed && showToggleButton && (
+          <div className="flex justify-center mt-2">
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={onToggleCollapse}
+              icon={<ChevronRightIcon className="h-3 w-3" />}
+              label="Expandir sidebar"
+              className="sage-bg-medium hover:sage-bg-light"
+            />
+          </div>
         )}
       </div>
 
@@ -112,23 +142,23 @@ const Sidebar: React.FC<SidebarProps> = ({
               title={isCollapsed ? category.name : undefined}
             >
               {isCollapsed ? (
-                // Modo colapsado - só ícone
+                // Collapsed mode - icon only, centered
                 <div className="flex justify-center">
                   <span className="text-xl">
                     {getCategoryIcon(category.name)}
                   </span>
                 </div>
               ) : (
-                // Modo expandido - ícone + texto + contador
+                // Expanded mode - icon + text + count (if main mode)
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">
                       {getCategoryIcon(category.name)}
                     </span>
                     <span
-                      className={`font-bold ${
-                        mode === "editor" ? "text-sm" : "text-lg"
-                      } ${isSelected ? "text-gray-800" : "sage-text-cream"}`}
+                      className={`font-bold text-lg ${
+                        isSelected ? "text-gray-800" : "sage-text-cream"
+                      }`}
                     >
                       {category.name}
                     </span>
@@ -148,34 +178,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
       </div>
-
-      {/* Botão Nova Categoria - só no modo normal */}
-      {showNewCategoryButton && (
-        <div className="p-3 border-t sage-border">
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full"
-            onClick={onNewCategory}
-          >
-            <PlusIcon className="h-5 w-5 mr-3" />
-            {t("navigation.newCategory")}
-          </Button>
-        </div>
-      )}
-
-      {/* Versão colapsada do botão nova categoria */}
-      {mode === "normal" && isCollapsed && onNewCategory && (
-        <div className="p-2">
-          <IconButton
-            variant="secondary"
-            onClick={onNewCategory}
-            icon={<PlusIcon className="h-5 w-5" />}
-            label={t("navigation.newCategory")}
-            className="w-full"
-          />
-        </div>
-      )}
     </aside>
   );
 };

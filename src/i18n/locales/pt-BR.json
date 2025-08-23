@@ -35,6 +35,10 @@
     "deleteConfirmation": "Tem certeza que deseja deletar \"{{title}}\"? Esta ação não pode ser desfeita."
   },
   "modal": {
+    "selectCategory": {
+      "title": "Selecionar Categoria",
+      "subtitle": "Escolha uma categoria para o novo documento"
+    },
     "createDocument": {
       "title": "Criar Documento",
       "subtitle": "na categoria {{category}}",
@@ -53,11 +57,20 @@
       "creating": "Criando..."
     }
   },
+  "attachments": {
+    "title": "Anexos",
+    "deleteTitle": "Deletar Anexo",
+    "deleteConfirmation": "Tem certeza que deseja deletar \"{{filename}}\"?"
+  },
   "editor": {
     "bold": "Negrito",
     "italic": "Itálico",
     "heading": "Título",
-    "bulletList": "Lista"
+    "bulletList": "Lista",
+    "unsavedChangesTitle": "Mudanças não salvas",
+    "unsavedChangesDescription": "Você tem mudanças não salvas. O que deseja fazer?",
+    "saveAndContinue": "Salvar e continuar", 
+    "discardChanges": "Descartar mudanças"
   },
   "fileTypes": {
     "text": "Texto",

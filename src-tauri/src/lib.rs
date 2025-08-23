@@ -1,3 +1,7 @@
+mod menu;
+
+use tauri::{Manager, WindowEvent};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -12,7 +16,28 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Create and set the menu
+            let menu = menu::create_app_menu(app.handle())?;
+            app.set_menu(menu)?;
+
+            // Get the main window and set minimum size
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_min_size(Some(tauri::LogicalSize::new(800.0, 600.0)));
+            }
+
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            menu::handle_menu_event(app, event.id().as_ref());
+        })
+        .on_window_event(|_window, event| {
+            match event {
+                WindowEvent::CloseRequested { .. } => {
+                    // Handle window close if needed
+                }
+                _ => {}
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

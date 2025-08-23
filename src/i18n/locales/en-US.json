@@ -35,6 +35,10 @@
     "deleteConfirmation": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone."
   },
   "modal": {
+    "selectCategory": {
+      "title": "Select Category",
+      "subtitle": "Choose a category for the new document"
+    },
     "createDocument": {
       "title": "Create Document",
       "subtitle": "in {{category}} category",
@@ -53,11 +57,20 @@
       "creating": "Creating..."
     }
   },
+  "attachments": {
+    "title": "Attachments",
+    "deleteTitle": "Delete Attachment",
+    "deleteConfirmation": "Are you sure you want to delete \"{{filename}}\"?"
+  },
   "editor": {
     "bold": "Bold",
     "italic": "Italic",
     "heading": "Heading",
-    "bulletList": "List"
+    "bulletList": "List",
+    "unsavedChangesTitle": "Unsaved Changes",
+    "unsavedChangesDescription": "You have unsaved changes. What would you like to do?",
+    "saveAndContinue": "Save and continue", 
+    "discardChanges": "Discard changes"
   },
   "fileTypes": {
     "text": "Text",

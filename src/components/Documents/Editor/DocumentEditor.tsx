@@ -7,7 +7,6 @@ import StarterKit from "@tiptap/starter-kit";
 import { db } from "../../../database";
 import type { Category } from "../../../database";
 import { Button, Input, Label } from "../../UI";
-import Sidebar from "../../Layout/Sidebar";
 import Header from "../../Layout/Header";
 import AttachmentPreview from "./AttachmentPreview";
 import AttachmentList from "./AttachmentList";
@@ -24,8 +23,7 @@ interface DocumentEditorProps {
   selectedCategory: Category;
   onClose: () => void;
   onDocumentCreated: () => void;
-  categories: Category[];
-  onCategoryChange: (category: Category) => void;
+  onContentChange?: (hasChanges: boolean) => void;
   editingDocumentId?: number;
   mode?: "create" | "edit";
 }
@@ -34,8 +32,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   selectedCategory,
   onClose,
   onDocumentCreated,
-  categories,
-  onCategoryChange,
+  onContentChange,
   editingDocumentId,
   mode = "create",
 }) => {
@@ -45,6 +42,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialTitle, setInitialTitle] = useState("");
+  const [initialContent, setInitialContent] = useState("");
 
   useEffect(() => {
     if (mode === "edit" && editingDocumentId) {
@@ -53,40 +52,36 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingDocumentId, mode]);
 
+  // Track changes for unsaved content detection
+  useEffect(() => {
+    const hasChanges =
+      title !== initialTitle || (editor?.getHTML() || "") !== initialContent;
+
+    if (onContentChange) {
+      onContentChange(hasChanges);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, initialTitle, initialContent, onContentChange]);
+
   const loadExistingAttachments = async (documentId: number) => {
     try {
       const existingAttachments = await db.getAttachments(documentId);
 
-      // DEBUG: Ver o que vem do banco
-      console.log("🔍 Anexos do banco:", existingAttachments);
-
       const attachmentFiles: AttachmentFile[] = existingAttachments.map(
-        (att) => {
-          console.log("📁 Processando anexo:", {
-            filename: att.filename,
-            filepath: att.filepath,
-            filetype: att.filetype,
-          });
-
-          return {
-            file: new File([], att.filename, { type: att.filetype }),
-            type: getFileType(
-              new File([], att.filename, { type: att.filetype })
-            ),
-            existingId: att.id,
-            existingPath: att.filepath,
-          };
-        }
+        (att) => ({
+          file: new File([], att.filename, { type: att.filetype }),
+          type: getFileType(new File([], att.filename, { type: att.filetype })),
+          existingId: att.id,
+          existingPath: att.filepath,
+        })
       );
-
-      console.log("✅ Anexos processados:", attachmentFiles);
 
       setAttachments(attachmentFiles);
       if (attachmentFiles.length > 0) {
         setSelectedAttachment(attachmentFiles[0]);
       }
     } catch (error) {
-      console.error("❌ Erro ao carregar anexos existentes:", error);
+      console.error("Error loading existing attachments:", error);
     }
   };
 
@@ -98,6 +93,9 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       const document = await db.getDocumentById(editingDocumentId);
       if (document) {
         setTitle(document.title);
+        setInitialTitle(document.title);
+        setInitialContent(document.text_content);
+
         if (editor) {
           editor.commands.setContent(document.text_content);
         }
@@ -105,13 +103,13 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
         await loadExistingAttachments(editingDocumentId);
       }
     } catch (error) {
-      console.error("Erro ao carregar documento para edição:", error);
+      console.error("Error loading document for editing:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Editor TipTap
+  // Editor TipTap with change tracking
   const editor = useEditor({
     extensions: [StarterKit],
     content: `<p>${t("modal.createDocument.contentPlaceholder")}</p>`,
@@ -121,13 +119,21 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           "sage-text-cream p-6 rounded-xl min-h-[400px] focus:outline-none prose prose-invert max-w-none prose-lg",
       },
     },
+    onUpdate: () => {
+      // Trigger change detection when content changes
+      const hasChanges =
+        title !== initialTitle || (editor?.getHTML() || "") !== initialContent;
+
+      if (onContentChange) {
+        onContentChange(hasChanges);
+      }
+    },
   });
 
   const processFile = (file: File): AttachmentFile => {
     const fileType = getFileType(file);
     const attachment: AttachmentFile = { file, type: fileType };
 
-    // Gerar preview para imagens
     if (fileType === "image") {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -155,7 +161,6 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       const newAttachments = Array.from(files).map(processFile);
       setAttachments((prev) => [...prev, ...newAttachments]);
 
-      // Selecionar o primeiro anexo automaticamente
       if (attachments.length === 0 && newAttachments.length > 0) {
         setSelectedAttachment(newAttachments[0]);
       }
@@ -166,7 +171,6 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     setAttachments((prev) => {
       const filtered = prev.filter((att) => att.file !== fileToRemove);
 
-      // Se removeu o selecionado, selecionar outro
       if (selectedAttachment?.file === fileToRemove) {
         setSelectedAttachment(filtered.length > 0 ? filtered[0] : null);
       }
@@ -191,7 +195,6 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
         await mkdir(attachmentsDir, { recursive: true });
       }
 
-      // Salvar apenas anexos novos (sem existingId)
       for (const attachment of attachments) {
         if (!attachment.existingId) {
           const { file } = attachment;
@@ -211,10 +214,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           );
         }
       }
-
-      console.log(`Salvos anexos para documento ${documentId}`);
     } catch (error) {
-      console.error("Erro ao salvar anexos:", error);
+      console.error("Error saving attachments:", error);
     }
   };
 
@@ -245,9 +246,17 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       }
 
       await saveAttachmentFiles(documentId);
+
+      // Reset change tracking
+      setInitialTitle(title);
+      setInitialContent(textContent);
+      if (onContentChange) {
+        onContentChange(false);
+      }
+
       onDocumentCreated();
     } catch (error) {
-      console.error("Erro ao salvar documento:", error);
+      console.error("Error saving document:", error);
     } finally {
       setIsLoading(false);
     }
@@ -255,18 +264,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Sidebar Colapsável - Categorias */}
-      <Sidebar
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={onCategoryChange}
-        mode="editor"
-        isCollapsible={true}
-      />
-
-      {/* Área Principal do Editor */}
       <div className="flex-1 flex flex-col">
-        {/* Header do Editor */}
         <Header
           mode="editor"
           editorTitle={
@@ -292,11 +290,8 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           isLoading={isLoading}
         />
 
-        {/* Layout Principal - 2 Colunas */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Coluna Esquerda - Editor */}
           <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
-            {/* Título */}
             <div>
               <Label required>{t("modal.createDocument.titleField")}</Label>
               <Input
@@ -310,7 +305,6 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
               />
             </div>
 
-            {/* Toolbar do Editor */}
             {editor && (
               <div className="flex items-center space-x-2 p-3 sage-bg-light rounded-xl">
                 <Button
@@ -360,26 +354,28 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
               </div>
             )}
 
-            {/* Editor Principal */}
             <div className="flex-1 sage-bg-medium rounded-xl">
               <EditorContent editor={editor} className="h-full" />
             </div>
           </div>
 
-          {/* Coluna Direita - Anexos e Preview */}
           <div className="w-96 sage-bg-dark border-l sage-border flex flex-col">
-            {/* Header Anexos */}
             <AttachmentList
               attachments={attachments}
               selectedAttachment={selectedAttachment}
               onAttachmentSelect={setSelectedAttachment}
               onAttachmentRemove={removeAttachment}
+              onAttachmentDeleted={() => {
+                if (editingDocumentId) {
+                  loadExistingAttachments(editingDocumentId);
+                }
+              }}
+              onSelectionClear={() => setSelectedAttachment(null)}
               onFileUpload={handleFileUpload}
               isLoading={isLoading}
               mode="editor"
             />
 
-            {/* Preview Area */}
             <div className="flex-1 p-4">
               <div className="h-full sage-bg-medium rounded-xl p-4">
                 <AttachmentPreview attachment={selectedAttachment} />

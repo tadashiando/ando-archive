@@ -4,13 +4,17 @@ import { db } from "../../database";
 import type { Category, Document } from "../../database";
 import { Spinner, DocumentCard, CreateDocumentCard } from "../UI";
 import DocumentEditor from "../Documents/Editor/DocumentEditor";
+import DocumentViewer from "../Documents/Viewer/DocumentViewer";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import DocumentViewer from "../Documents/Viewer/DocumentViewer";
 import Dialog from "../UI/Dialog";
+import CategorySelectDialog from "../UI/CategorySelectDialog";
+import { useMenuEvents } from "../../hooks/useMenuEvents";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
+
+  // Core data states
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
@@ -21,21 +25,44 @@ const MainLayout: React.FC = () => {
   const [categoryCounts, setCategoryCounts] = useState<{
     [key: number]: number;
   }>({});
-  const [isEditorMode, setIsEditorMode] = useState(false);
-  const [viewerMode, setViewerMode] = useState<"list" | "view" | "edit">(
+
+  // View mode states
+  const [viewMode, setViewMode] = useState<"list" | "editor" | "viewer">(
     "list"
   );
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
     null
   );
+  const [editingDocumentId, setEditingDocumentId] = useState<number | null>(
+    null
+  );
+
+  // UI states
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
     null
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [categorySelectOpen, setCategorySelectOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingCategoryChange, setPendingCategoryChange] =
+    useState<Category | null>(null);
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] =
+    useState(false);
+
+  // Determine sidebar collapse based on view mode
+  const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
+  const effectiveSidebarCollapsed = shouldSidebarCollapse
+    ? sidebarCollapsed
+    : false;
 
   useEffect(() => {
     loadCategories();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -59,11 +86,30 @@ const MainLayout: React.FC = () => {
     }
   }, [categories]);
 
+  // Menu event handlers
+  useMenuEvents({
+    onNewDocument: () => setCategorySelectOpen(true),
+    onNewCategory: () => console.log("New category from menu"),
+    onSettings: () => console.log("Settings from menu"),
+    onToggleSidebar: () => setSidebarVisible(!sidebarVisible),
+    onSearch: () => {
+      const searchInput = document.querySelector(
+        'input[placeholder*="search"]'
+      ) as HTMLInputElement;
+      if (searchInput) searchInput.focus();
+    },
+    onReload: () => {
+      loadCategories();
+      if (selectedCategory) loadDocuments(selectedCategory.id);
+    },
+    onAbout: () => console.log("About from menu"),
+  });
+
   const loadCategories = async () => {
     try {
       const cats = await db.getCategories();
       setCategories(cats);
-      if (cats.length > 0) {
+      if (cats.length > 0 && !selectedCategory) {
         setSelectedCategory(cats[0]);
       }
       setLoading(false);
@@ -96,43 +142,80 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const handleDocumentCreated = () => {
-    if (selectedCategory) {
-      loadDocuments(selectedCategory.id);
-      loadCategories(); // Para atualizar contadores
+  // Navigation handlers
+  const handleBackToList = () => {
+    if (viewMode === "editor" && hasUnsavedChanges) {
+      setPendingCategoryChange(null);
+      setUnsavedChangesDialogOpen(true);
+    } else {
+      setViewMode("list");
+      setSelectedDocumentId(null);
+      setEditingDocumentId(null);
+      setHasUnsavedChanges(false);
     }
-    setIsEditorMode(false); // Fechar editor após criar
   };
 
-  const handleCreateDocument = () => {
-    setIsEditorMode(true);
+  const handleCategoryChange = (category: Category) => {
+    if (viewMode === "viewer") {
+      // Always exit viewer and go to list when changing categories
+      setViewMode("list");
+      setSelectedDocumentId(null);
+      setSelectedCategory(category);
+    } else if (viewMode === "editor" && hasUnsavedChanges) {
+      // Editor with unsaved changes - ask for confirmation
+      setPendingCategoryChange(category);
+      setUnsavedChangesDialogOpen(true);
+    } else {
+      // Safe to change category (list mode or editor without changes)
+      setSelectedCategory(category);
+      if (viewMode === "editor") {
+        setViewMode("list");
+        setEditingDocumentId(null);
+      }
+    }
   };
 
-  const handleCloseEditor = () => {
-    setIsEditorMode(false);
+  // Document operations
+  const handleCreateDocument = (category?: Category) => {
+    if (category) {
+      setSelectedCategory(category);
+      setViewMode("editor");
+      setEditingDocumentId(null);
+      setHasUnsavedChanges(false);
+    } else {
+      setCategorySelectOpen(true);
+    }
+  };
+
+  const handleCategorySelected = (category: Category) => {
+    setSelectedCategory(category);
+    setViewMode("editor");
+    setEditingDocumentId(null);
+    setHasUnsavedChanges(false);
   };
 
   const handleViewDocument = (documentId: number) => {
     setSelectedDocumentId(documentId);
-    setViewerMode("view");
+    setViewMode("viewer");
   };
 
   const handleEditDocument = (documentId: number) => {
-    setSelectedDocumentId(documentId);
-    setIsEditorMode(true);
-    setViewerMode("list"); // Não vai para viewer, vai direto pro editor
+    setEditingDocumentId(documentId);
+    setViewMode("editor");
+    setHasUnsavedChanges(false);
   };
 
-  const handleCloseViewer = () => {
-    setViewerMode("list");
-    setSelectedDocumentId(null);
+  const handleDocumentCreated = () => {
+    if (selectedCategory) {
+      loadDocuments(selectedCategory.id);
+      loadCategories();
+    }
+    setViewMode("list");
+    setEditingDocumentId(null);
+    setHasUnsavedChanges(false);
   };
 
-  const handleNewCategory = () => {
-    // TODO: Implementar modal/form para nova categoria
-    console.log("Criar nova categoria");
-  };
-
+  // Delete operations
   const handleDeleteDocument = (documentId: number) => {
     const document = documents.find((doc) => doc.id === documentId);
     if (document) {
@@ -156,20 +239,42 @@ const MainLayout: React.FC = () => {
       setDeleteDialogOpen(false);
       setDocumentToDelete(null);
     } catch (error) {
-      console.error("Error deleting document: ", error);
+      console.error("Error deleting document:", error);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const getAttachmentTypes = () => {
-    const types = ["text"];
-    if (Math.random() > 0.5) types.push("image");
-    if (Math.random() > 0.7) types.push("pdf");
-    if (Math.random() > 0.8) types.push("video");
-    return types;
+  // Unsaved changes dialog handlers
+  const handleDiscardChanges = () => {
+    setHasUnsavedChanges(false);
+    setUnsavedChangesDialogOpen(false);
+    setViewMode("list");
+    setEditingDocumentId(null);
+    if (pendingCategoryChange) {
+      setSelectedCategory(pendingCategoryChange);
+      setPendingCategoryChange(null);
+    }
   };
 
+  const handleSaveAndContinue = async () => {
+    // TODO: Trigger save in editor component
+    setHasUnsavedChanges(false);
+    setUnsavedChangesDialogOpen(false);
+    setViewMode("list");
+    setEditingDocumentId(null);
+    if (pendingCategoryChange) {
+      setSelectedCategory(pendingCategoryChange);
+      setPendingCategoryChange(null);
+    }
+  };
+
+  const handleCancelCategoryChange = () => {
+    setUnsavedChangesDialogOpen(false);
+    setPendingCategoryChange(null);
+  };
+
+  // Helper functions
   const getCategoryIcon = (categoryName: string) => {
     switch (categoryName) {
       case "Receitas":
@@ -200,7 +305,6 @@ const MainLayout: React.FC = () => {
         ? "architecture"
         : "default"
     }`;
-
     return t(subtitleKey);
   };
 
@@ -210,6 +314,14 @@ const MainLayout: React.FC = () => {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const getAttachmentTypes = () => {
+    const types = ["text"];
+    if (Math.random() > 0.5) types.push("image");
+    if (Math.random() > 0.7) types.push("pdf");
+    if (Math.random() > 0.8) types.push("video");
+    return types;
   };
 
   if (loading) {
@@ -230,75 +342,80 @@ const MainLayout: React.FC = () => {
     <div className="h-screen sage-bg-deepest sage-text-white flex flex-col">
       {/* Header */}
       <Header
-        mode={isEditorMode ? "compact" : "normal"}
+        mode={viewMode === "editor" ? "compact" : "normal"}
         searchQuery={searchQuery}
         onSearchChange={handleSearch}
-        onCreateClick={handleCreateDocument}
-        createButtonDisabled={!selectedCategory}
+        createButtonDisabled={categories.length === 0}
       />
 
-      {/* Conteúdo Condicional */}
-      {viewerMode === "view" && selectedDocumentId && selectedCategory ? (
-        <DocumentViewer
-          documentId={selectedDocumentId}
-          selectedCategory={selectedCategory}
-          onClose={handleCloseViewer}
-          onEdit={handleEditDocument}
-          categories={categories}
-          onCategoryChange={setSelectedCategory}
-        />
-      ) : isEditorMode && selectedCategory ? (
-        <DocumentEditor
-          selectedCategory={selectedCategory}
-          onClose={handleCloseEditor}
-          onDocumentCreated={handleDocumentCreated}
-          categories={categories}
-          onCategoryChange={setSelectedCategory}
-          editingDocumentId={selectedDocumentId || undefined}
-          mode={selectedDocumentId ? "edit" : "create"}
-        />
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar - Categorias */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Unified Sidebar */}
+        {sidebarVisible && (
           <Sidebar
             categories={categories}
             selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            onNewCategory={handleNewCategory}
+            onCategoryChange={handleCategoryChange}
             categoryCounts={categoryCounts}
-            mode="normal"
-            isCollapsible={false}
+            mode={viewMode === "list" ? "main" : "editor"}
+            isCollapsed={effectiveSidebarCollapsed}
+            onToggleCollapse={
+              shouldSidebarCollapse
+                ? () => setSidebarCollapsed(!sidebarCollapsed)
+                : undefined
+            }
+            onClose={viewMode === "viewer" ? handleBackToList : undefined}
           />
+        )}
 
-          {/* Main Content */}
-          <main className="flex-1 p-8 overflow-y-auto sage-bg-deepest space-y-8">
-            {selectedCategory ? (
-              <>
-                <div className="mb-8">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <span className="text-5xl">
-                      {getCategoryIcon(selectedCategory.name)}
-                    </span>
-                    <div>
-                      <h2 className="text-4xl font-black sage-text-white">
-                        {selectedCategory.name}
-                      </h2>
-                      <p className="sage-text-mist text-lg font-medium mt-1">
-                        {t("categories.documentsCount", {
-                          count: documents.length,
-                        })}{" "}
-                        {t("categories.documentsInCategory")}
-                      </p>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col">
+          {viewMode === "editor" && selectedCategory ? (
+            <DocumentEditor
+              selectedCategory={selectedCategory}
+              onClose={handleBackToList}
+              onDocumentCreated={handleDocumentCreated}
+              onContentChange={(hasChanges: boolean) =>
+                setHasUnsavedChanges(hasChanges)
+              }
+              editingDocumentId={editingDocumentId || undefined}
+              mode={editingDocumentId ? "edit" : "create"}
+            />
+          ) : viewMode === "viewer" &&
+            selectedDocumentId &&
+            selectedCategory ? (
+            <DocumentViewer
+              documentId={selectedDocumentId}
+              selectedCategory={selectedCategory}
+              onClose={handleBackToList}
+              onEdit={handleEditDocument}
+              onBackToList={handleBackToList}
+            />
+          ) : (
+            /* Document List View */
+            <main className="flex-1 p-8 overflow-y-auto sage-bg-deepest space-y-8">
+              {selectedCategory ? (
+                <>
+                  <div className="mb-8">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <span className="text-5xl">
+                        {getCategoryIcon(selectedCategory.name)}
+                      </span>
+                      <div>
+                        <h2 className="text-4xl font-black sage-text-white">
+                          {selectedCategory.name}
+                        </h2>
+                        <p className="sage-text-mist text-lg font-medium mt-1">
+                          {t("categories.documentsCount", {
+                            count: documents.length,
+                          })}{" "}
+                          {t("categories.documentsInCategory")}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Grid de Documentos */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {documents.map((document) => {
-                    const attachmentTypes = getAttachmentTypes();
-
-                    return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {documents.map((document) => (
                       <DocumentCard
                         key={document.id}
                         title={document.title}
@@ -306,35 +423,45 @@ const MainLayout: React.FC = () => {
                           document.description || t("documents.noDescription")
                         }
                         date={formatDate(document.created_at)}
-                        attachmentTypes={attachmentTypes}
+                        attachmentTypes={getAttachmentTypes()}
                         onView={() => handleViewDocument(document.id)}
                         onEdit={() => handleEditDocument(document.id)}
                         onDelete={() => handleDeleteDocument(document.id)}
                       />
-                    );
-                  })}
+                    ))}
 
-                  {/* Card para adicionar novo documento */}
-                  <CreateDocumentCard
-                    title={t("documents.create")}
-                    subtitle={getDocumentCreateSubtitle(selectedCategory.name)}
-                    onClick={() => handleCreateDocument()}
-                  />
+                    <CreateDocumentCard
+                      title={t("documents.create")}
+                      subtitle={getDocumentCreateSubtitle(
+                        selectedCategory.name
+                      )}
+                      onClick={() => handleCreateDocument(selectedCategory)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <span className="text-6xl mb-4 block">🌲</span>
+                    <p className="sage-text-mist text-lg">
+                      Selecione uma categoria para começar
+                    </p>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <span className="text-6xl mb-4 block">🌲</span>
-                  <p className="sage-text-mist text-lg">
-                    Selecione uma categoria para começar
-                  </p>
-                </div>
-              </div>
-            )}
-          </main>
+              )}
+            </main>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Dialogs */}
+      <CategorySelectDialog
+        isOpen={categorySelectOpen}
+        onClose={() => setCategorySelectOpen(false)}
+        onCategorySelect={handleCategorySelected}
+        categories={categories}
+      />
+
       <Dialog
         isOpen={deleteDialogOpen}
         onClose={() => {
@@ -353,6 +480,52 @@ const MainLayout: React.FC = () => {
         variant="danger"
         isLoading={isDeleting}
       />
+
+      <Dialog
+        isOpen={unsavedChangesDialogOpen}
+        onClose={handleCancelCategoryChange}
+        title={t("editor.unsavedChangesTitle")}
+        description={t("editor.unsavedChangesDescription")}
+        confirmText={t("editor.saveAndContinue")}
+        cancelText={t("common.cancel")}
+        onConfirm={handleSaveAndContinue}
+        variant="default"
+      />
+
+      {/* Custom unsaved changes dialog with three buttons */}
+      {unsavedChangesDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md sage-bg-dark sage-border border-2 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-xl font-bold sage-text-white mb-2">
+              {t("editor.unsavedChangesTitle")}
+            </h3>
+            <p className="sage-text-mist mb-6">
+              {t("editor.unsavedChangesDescription")}
+            </p>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleDiscardChanges}
+                className="px-4 py-2 sage-btn-secondary rounded-lg"
+              >
+                {t("editor.discardChanges")}
+              </button>
+              <button
+                onClick={handleCancelCategoryChange}
+                className="px-4 py-2 sage-btn-secondary rounded-lg"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleSaveAndContinue}
+                className="px-4 py-2 sage-btn-primary rounded-lg"
+              >
+                {t("editor.saveAndContinue")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

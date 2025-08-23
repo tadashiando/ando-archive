@@ -249,6 +249,41 @@ class DatabaseManager {
     }
   }
 
+  async deleteAttachment(attachmentId: number): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Get attachment info before deleting
+    const attachments = (await this.db.select(
+      "SELECT * FROM attachments WHERE id = ?",
+      [attachmentId]
+    )) as Attachment[];
+
+    if (attachments.length === 0) {
+      throw new Error("Attachment not found");
+    }
+
+    const attachment = attachments[0];
+
+    // Delete physical file
+    try {
+      const normalizedPath = attachment.filepath.replace(/\//g, "\\");
+      const fileExists = await exists(normalizedPath);
+      if (fileExists) {
+        await remove(normalizedPath);
+      }
+    } catch (error) {
+      // Log but don't fail - file might already be gone
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      console.warn(`Could not delete attachment file: ${errorMessage}`);
+    }
+
+    // Delete from database
+    await this.db.execute("DELETE FROM attachments WHERE id = ?", [
+      attachmentId,
+    ]);
+  }
+
   // === BUSCA ===
   async searchDocuments(query: string): Promise<Document[]> {
     if (!this.db) throw new Error("Database not initialized");
