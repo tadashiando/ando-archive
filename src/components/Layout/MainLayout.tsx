@@ -93,11 +93,41 @@ const MainLayout: React.FC = () => {
     }
   }, [categories]);
 
-  // Menu event handlers - refactored
+  useEffect(() => {
+    if (selectedCategory && categories.length > 0) {
+      const categoryExists = categories.find(
+        (cat) => cat.id === selectedCategory.id
+      );
+      if (!categoryExists) {
+        setDocuments([]);
+        setSelectedCategory(categories[0]);
+        if (viewMode !== "list") {
+          setViewMode("list");
+          setEditingDocumentId(null);
+          setSelectedDocumentId(null);
+          setHasUnsavedChanges(false);
+        }
+      }
+    } else if (!selectedCategory && categories.length > 0) {
+      setSelectedCategory(categories[0]);
+    }
+  }, [categories, selectedCategory, viewMode]);
+
+  // Menu event handlers
   useMenuEvents({
+    // Documents menu
     onNewDocument: () => setCategorySelectModalOpen(true),
+
+    // Categories menu
     onNewCategory: () => setNewCategoryModalOpen(true),
-    onSettings: () => setCategoryManagementModalOpen(true),
+    onManageCategories: () => setCategoryManagementModalOpen(true),
+
+    // File menu
+    onExportArchive: () => console.log("Export archive"), // TODO: Implement
+    onImportArchive: () => console.log("Import archive"), // TODO: Implement
+    onSettings: () => console.log("Settings"),
+
+    // View menu
     onToggleSidebar: () => setSidebarVisible(!sidebarVisible),
     onSearch: () => {
       const searchInput = document.querySelector(
@@ -109,6 +139,8 @@ const MainLayout: React.FC = () => {
       loadCategories();
       if (selectedCategory) loadDocuments(selectedCategory.id);
     },
+
+    // Help menu
     onAbout: () => console.log("About from menu"),
   });
 
@@ -275,7 +307,27 @@ const MainLayout: React.FC = () => {
   };
 
   const handleCategoryManagementUpdate = () => {
-    loadCategories();
+    const currentCategoryId = selectedCategory?.id;
+
+    loadCategories().then(() => {
+      if (currentCategoryId) {
+        const categoryStillExists = categories.find(
+          (cat) => cat.id === currentCategoryId
+        );
+
+        if (!categoryStillExists) {
+          setDocuments([]);
+          setSelectedCategory(categories.length > 0 ? categories[0] : null);
+
+          if (viewMode !== "list") {
+            setViewMode("list");
+            setEditingDocumentId(null);
+            setSelectedDocumentId(null);
+            setHasUnsavedChanges(false);
+          }
+        }
+      }
+    });
   };
 
   // Unsaved changes dialog handlers - refactored
