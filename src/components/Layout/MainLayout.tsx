@@ -69,7 +69,7 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -129,6 +129,12 @@ const MainLayout: React.FC = () => {
   const loadDocuments = async (categoryId: number) => {
     try {
       const docs = await db.getDocumentsByCategory(categoryId);
+      docs.sort((a, b) =>
+        a.title.localeCompare(b.title, "pt-BR", {
+          sensitivity: "base",
+          numeric: true, // Para ordenar "Doc 2" antes de "Doc 10"
+        })
+      );
       setDocuments(docs);
     } catch (error) {
       console.error("Error loading documents:", error);
