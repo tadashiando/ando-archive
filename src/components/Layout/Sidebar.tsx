@@ -7,6 +7,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Card, Badge, IconButton } from "../UI";
 import type { Category } from "../../database";
+import { getCategoryIcon } from "../../utils/categoryIcons";
 
 interface SidebarProps {
   categories: Category[];
@@ -40,25 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const showCloseButton = mode === "viewer" && !isCollapsed;
   const showToggleButton =
     (mode === "editor" || mode === "viewer") && onToggleCollapse;
-
-  const getCategoryIcon = (categoryName: string) => {
-    switch (categoryName) {
-      case "Receitas":
-      case "Recipes":
-        return "🌿";
-      case "Construção":
-      case "Construction":
-        return "🏡";
-      case "Arquitetura":
-      case "Architecture":
-        return "🏛️";
-      case "Educação":
-      case "Education":
-        return "📚";
-      default:
-        return "📁";
-    }
-  };
 
   const sidebarWidth = isCollapsed ? "w-16" : "w-80";
 
@@ -145,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 // Collapsed mode - icon only, centered
                 <div className="flex justify-center">
                   <span className="text-xl">
-                    {getCategoryIcon(category.name)}
+                    {getCategoryIcon(category.name, category.icon)}
                   </span>
                 </div>
               ) : (
@@ -153,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">
-                      {getCategoryIcon(category.name)}
+                      {getCategoryIcon(category.name, category.icon)}
                     </span>
                     <span
                       className={`font-bold text-lg ${

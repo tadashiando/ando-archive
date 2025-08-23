@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Fontes locais */
+/* Fontes locais - Overlock */
 @font-face {
   font-family: "Overlock";
   src: url("/fonts/Overlock-Regular.ttf") format("truetype");
@@ -19,6 +19,28 @@
   font-weight: 900;
 }
 
+/* Font Awesome 7 Icons */
+@font-face {
+  font-family: "Font Awesome 7 Free";
+  src: url("/fonts/Font Awesome 7 Free-Solid-900.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Font Awesome 7 Free";
+  src: url("/fonts/Font Awesome 7 Free-Regular-400.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Font Awesome 7 Brands";
+  src: url("/fonts/Font Awesome 7 Brands-Regular-400.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
 /* Reset suave - sem interferir no Tailwind */
 html,
 body {
@@ -35,6 +57,30 @@ body {
 /* Fonte padrão */
 body {
   font-family: "Overlock", system-ui, sans-serif;
+}
+
+/* Font Awesome utility classes */
+.fa-solid {
+  font-family: "Font Awesome 7 Free";
+  font-weight: 900;
+}
+
+.fa-regular {
+  font-family: "Font Awesome 7 Free";
+  font-weight: 400;
+}
+
+.fa-brands {
+  font-family: "Font Awesome 7 Brands";
+  font-weight: 400;
+}
+
+.fa-icon {
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+  display: inline-block;
 }
 
 /* === PALETA SAGE FOREST - MÁXIMA SAÚDE OCULAR === */

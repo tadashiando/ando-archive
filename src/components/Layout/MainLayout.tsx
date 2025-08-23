@@ -10,6 +10,9 @@ import Header from "./Header";
 import Dialog from "../UI/Dialog";
 import CategorySelectDialog from "../UI/CategorySelectDialog";
 import { useMenuEvents } from "../../hooks/useMenuEvents";
+import NewCategoryDialog from "../UI/NewCategoryDialog";
+import CategoryManagementDialog from "../UI/CategoryManagementDialog";
+import { getCategoryIcon } from "../../utils/categoryIcons";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -53,6 +56,8 @@ const MainLayout: React.FC = () => {
     useState<Category | null>(null);
   const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] =
     useState(false);
+  const [newCategoryDialogOpen, setNewCategoryDialogOpen] = useState(false);
+  const [categoryManagementOpen, setCategoryManagementOpen] = useState(false);
 
   // Determine sidebar collapse based on view mode
   const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
@@ -62,7 +67,7 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -89,8 +94,8 @@ const MainLayout: React.FC = () => {
   // Menu event handlers
   useMenuEvents({
     onNewDocument: () => setCategorySelectOpen(true),
-    onNewCategory: () => console.log("New category from menu"),
-    onSettings: () => console.log("Settings from menu"),
+    onNewCategory: () => setNewCategoryDialogOpen(true),
+    onSettings: () => setCategoryManagementOpen(true),
     onToggleSidebar: () => setSidebarVisible(!sidebarVisible),
     onSearch: () => {
       const searchInput = document.querySelector(
@@ -274,26 +279,27 @@ const MainLayout: React.FC = () => {
     setPendingCategoryChange(null);
   };
 
-  // Helper functions
-  const getCategoryIcon = (categoryName: string) => {
-    switch (categoryName) {
-      case "Receitas":
-      case "Recipes":
-        return "🌿";
-      case "Construção":
-      case "Construction":
-        return "🏡";
-      case "Arquitetura":
-      case "Architecture":
-        return "🏛️";
-      case "Educação":
-      case "Education":
-        return "📚";
-      default:
-        return "📁";
+  const handleCreateCategory = async (
+    name: string,
+    icon: string,
+    color: string
+  ) => {
+    try {
+      await db.createCategory(name, icon, color);
+      await loadCategories(); // Refresh categories
+      // TODO: Show success toast
+      console.log("Category created successfully");
+    } catch (error) {
+      console.error("Error creating category:", error);
+      throw error; // Let dialog handle the error
     }
   };
 
+  const handleCategoryManagementUpdate = () => {
+    loadCategories(); // Refresh categories when management dialog makes changes
+  };
+
+  // Helper functions
   const getDocumentCreateSubtitle = (categoryName: string) => {
     const categoryKey = categoryName.toLowerCase();
     const subtitleKey = `documents.createSubtitle.${
@@ -398,7 +404,10 @@ const MainLayout: React.FC = () => {
                   <div className="mb-8">
                     <div className="flex items-center space-x-4 mb-4">
                       <span className="text-5xl">
-                        {getCategoryIcon(selectedCategory.name)}
+                        {getCategoryIcon(
+                          selectedCategory.name,
+                          selectedCategory.icon
+                        )}
                       </span>
                       <div>
                         <h2 className="text-4xl font-black sage-text-white">
@@ -526,6 +535,24 @@ const MainLayout: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Category Dialogs */}
+      <NewCategoryDialog
+        isOpen={newCategoryDialogOpen}
+        onClose={() => setNewCategoryDialogOpen(false)}
+        onCategoryCreate={handleCreateCategory}
+        existingCategories={categories.map((cat) => cat.name)}
+      />
+
+      <CategoryManagementDialog
+        isOpen={categoryManagementOpen}
+        onClose={() => setCategoryManagementOpen(false)}
+        categories={categories}
+        onCategoryUpdate={handleCategoryManagementUpdate}
+        onNewCategory={() => {
+          setCategoryManagementOpen(false);
+          setNewCategoryDialogOpen(true);
+        }}
+      />
     </div>
   );
 };

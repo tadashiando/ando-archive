@@ -408,6 +408,8 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = "md", className }) => {
   );
 };
 
+export { FAIcon } from './FAICon';
+
 // === CONTAINER COMPONENT ===
 export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: "sm" | "md" | "lg" | "xl" | "full";

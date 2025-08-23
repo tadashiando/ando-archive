@@ -7,6 +7,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Card, IconButton } from "../../UI";
 import type { Category } from "../../../database";
+import { getCategoryIcon } from "../../../utils/categoryIcons";
 
 interface DocumentNavigationProps {
   categories: Category[];
@@ -28,25 +29,6 @@ const DocumentNavigation: React.FC<DocumentNavigationProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-
-  const getCategoryIcon = (categoryName: string) => {
-    switch (categoryName) {
-      case "Receitas":
-      case "Recipes":
-        return "🌿";
-      case "Construção":
-      case "Construction":
-        return "🏡";
-      case "Arquitetura":
-      case "Architecture":
-        return "🏛️";
-      case "Educação":
-      case "Education":
-        return "📚";
-      default:
-        return "📁";
-    }
-  };
 
   return (
     <aside className="w-80 sage-bg-dark sage-border border-r-2 p-6 overflow-y-auto space-y-6">
@@ -77,7 +59,7 @@ const DocumentNavigation: React.FC<DocumentNavigationProps> = ({
             >
               <div className="flex items-center space-x-3">
                 <span className="text-xl">
-                  {getCategoryIcon(category.name)}
+                  {getCategoryIcon(category.name, category.icon)}
                 </span>
                 <span
                   className={`font-bold text-sm ${

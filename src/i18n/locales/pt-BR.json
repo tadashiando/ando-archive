@@ -18,7 +18,58 @@
     "education": "Educação",
     "documentsCount": "{{count}} documento",
     "documentsCount_plural": "{{count}} documentos",
-    "documentsInCategory": "nesta categoria"
+    "documentsInCategory": "nesta categoria",
+    "manage": "Gerenciar Categorias",
+    "modal": {
+      "new": {
+        "title": "Nova Categoria",
+        "subtitle": "Criar nova categoria para organizar seus documentos",
+        "nameField": "Nome da Categoria",
+        "namePlaceholder": "Projetos Pessoais, Documentos de Trabalho, Hobbies...",
+        "iconField": "Ícone",
+        "colorField": "Cor",
+        "previewPlaceholder": "Prévia da Categoria",
+        "previewSubtitle": "Assim é como sua categoria aparecerá",
+        "create": "Criar Categoria",
+        "creating": "Criando..."
+      },
+      "edit": {
+        "title": "Editar Categoria",
+        "subtitle": "Modificar configurações da categoria",
+        "save": "Salvar Mudanças",
+        "saving": "Salvando..."
+      },
+      "delete": {
+        "title": "Deletar Categoria",
+        "subtitle": "Esta ação não pode ser desfeita",
+        "confirmMessage": "Tem certeza que deseja deletar \"{{name}}\"?",
+        "documentsWarning": "Esta categoria contém {{count}} documento. O que você gostaria de fazer?",
+        "documentsWarning_plural": "Esta categoria contém {{count}} documentos. O que você gostaria de fazer?",
+        "moveToCategory": "Mover documentos para outra categoria",
+        "deleteDocuments": "Deletar todos os documentos desta categoria",
+        "selectTargetCategory": "Selecione a categoria destino:",
+        "confirmDelete": "Sim, deletar categoria",
+        "deleting": "Deletando..."
+      }
+    },
+    "validation": {
+      "nameRequired": "Nome da categoria é obrigatório",
+      "nameTooLong": "Nome da categoria deve ter 50 caracteres ou menos",
+      "nameAlreadyExists": "Já existe uma categoria com esse nome",
+      "createError": "Falha ao criar categoria. Tente novamente.",
+      "updateError": "Falha ao atualizar categoria. Tente novamente.",
+      "deleteError": "Falha ao deletar categoria. Tente novamente."
+    },
+    "actions": {
+      "edit": "Editar Categoria",
+      "delete": "Deletar Categoria",
+      "manage": "Gerenciar Categorias"
+    },
+    "success": {
+      "created": "Categoria \"{{name}}\" criada com sucesso",
+      "updated": "Categoria \"{{name}}\" atualizada com sucesso",
+      "deleted": "Categoria \"{{name}}\" deletada com sucesso"
+    }
   },
   "documents": {
     "create": "Novo Documento",
@@ -69,7 +120,7 @@
     "bulletList": "Lista",
     "unsavedChangesTitle": "Mudanças não salvas",
     "unsavedChangesDescription": "Você tem mudanças não salvas. O que deseja fazer?",
-    "saveAndContinue": "Salvar e continuar", 
+    "saveAndContinue": "Salvar e continuar",
     "discardChanges": "Descartar mudanças"
   },
   "fileTypes": {

@@ -18,7 +18,58 @@
     "education": "Education",
     "documentsCount": "{{count}} document",
     "documentsCount_plural": "{{count}} documents",
-    "documentsInCategory": "in this category"
+    "documentsInCategory": "in this category",
+    "manage": "Manage Categories",
+    "modal": {
+      "new": {
+        "title": "New Category",
+        "subtitle": "Create a new category to organize your documents",
+        "nameField": "Category Name",
+        "namePlaceholder": "Personal Projects, Work Documents, Hobbies...",
+        "iconField": "Icon",
+        "colorField": "Color",
+        "previewPlaceholder": "Category Preview",
+        "previewSubtitle": "This is how your category will appear",
+        "create": "Create Category",
+        "creating": "Creating..."
+      },
+      "edit": {
+        "title": "Edit Category",
+        "subtitle": "Modify category settings",
+        "save": "Save Changes",
+        "saving": "Saving..."
+      },
+      "delete": {
+        "title": "Delete Category",
+        "subtitle": "This action cannot be undone",
+        "confirmMessage": "Are you sure you want to delete \"{{name}}\"?",
+        "documentsWarning": "This category contains {{count}} document(s). What would you like to do?",
+        "documentsWarning_plural": "This category contains {{count}} documents. What would you like to do?",
+        "moveToCategory": "Move documents to another category",
+        "deleteDocuments": "Delete all documents in this category",
+        "selectTargetCategory": "Select target category:",
+        "confirmDelete": "Yes, delete category",
+        "deleting": "Deleting..."
+      }
+    },
+    "validation": {
+      "nameRequired": "Category name is required",
+      "nameTooLong": "Category name must be 50 characters or less",
+      "nameAlreadyExists": "A category with this name already exists",
+      "createError": "Failed to create category. Please try again.",
+      "updateError": "Failed to update category. Please try again.",
+      "deleteError": "Failed to delete category. Please try again."
+    },
+    "actions": {
+      "edit": "Edit Category",
+      "delete": "Delete Category",
+      "manage": "Manage Categories"
+    },
+    "success": {
+      "created": "Category \"{{name}}\" created successfully",
+      "updated": "Category \"{{name}}\" updated successfully",
+      "deleted": "Category \"{{name}}\" deleted successfully"
+    }
   },
   "documents": {
     "create": "New Document",
@@ -69,7 +120,7 @@
     "bulletList": "List",
     "unsavedChangesTitle": "Unsaved Changes",
     "unsavedChangesDescription": "You have unsaved changes. What would you like to do?",
-    "saveAndContinue": "Save and continue", 
+    "saveAndContinue": "Save and continue",
     "discardChanges": "Discard changes"
   },
   "fileTypes": {

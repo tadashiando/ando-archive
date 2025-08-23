@@ -324,6 +324,87 @@ class DatabaseManager {
     )) as Attachment[];
     return attachments[0];
   }
+
+  // === CATEGORIA CRUD EXTENDED ===
+
+  async updateCategory(
+    id: number,
+    name: string,
+    icon: string,
+    color: string
+  ): Promise<Category> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    await this.db.execute(
+      "UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?",
+      [name, icon, color, id]
+    );
+
+    const categories = (await this.db.select(
+      "SELECT * FROM categories WHERE id = ?",
+      [id]
+    )) as Category[];
+    return categories[0];
+  }
+
+  async deleteCategory(id: number, targetCategoryId?: number): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Check if there are documents in this category
+    const documents = await this.getDocumentsByCategory(id);
+
+    if (documents.length > 0) {
+      if (targetCategoryId) {
+        // Move documents to target category
+        await this.db.execute(
+          "UPDATE documents SET category_id = ? WHERE category_id = ?",
+          [targetCategoryId, id]
+        );
+      } else {
+        // Delete all documents in this category (cascade delete will handle attachments)
+        for (const document of documents) {
+          await this.deleteDocument(document.id);
+        }
+      }
+    }
+
+    // Now safe to delete the category
+    await this.db.execute("DELETE FROM categories WHERE id = ?", [id]);
+  }
+
+  async getCategoryByName(name: string): Promise<Category | null> {
+    if (!this.db) throw new Error("Database not initialized");
+    const categories = (await this.db.select(
+      "SELECT * FROM categories WHERE LOWER(name) = LOWER(?)",
+      [name]
+    )) as Category[];
+    return categories.length > 0 ? categories[0] : null;
+  }
+
+  async getCategoryDocumentCount(categoryId: number): Promise<number> {
+    if (!this.db) throw new Error("Database not initialized");
+    const result = (await this.db.select(
+      "SELECT COUNT(*) as count FROM documents WHERE category_id = ?",
+      [categoryId]
+    )) as { count: number }[];
+    return result[0].count;
+  }
+
+  async getAllCategoryDocumentCounts(): Promise<{ [key: number]: number }> {
+    if (!this.db) throw new Error("Database not initialized");
+    const results = (await this.db.select(`
+      SELECT category_id, COUNT(*) as count 
+      FROM documents 
+      GROUP BY category_id
+    `)) as { category_id: number; count: number }[];
+
+    const counts: { [key: number]: number } = {};
+    results.forEach((result) => {
+      counts[result.category_id] = result.count;
+    });
+
+    return counts;
+  }
 }
 
 export const db = new DatabaseManager();

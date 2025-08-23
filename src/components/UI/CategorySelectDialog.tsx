@@ -4,6 +4,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { Button, IconButton, Card } from "./index";
 import type { Category } from "../../database";
+import { getCategoryIcon } from "../../utils/categoryIcons";
 
 interface CategorySelectDialogProps {
   isOpen: boolean;
@@ -22,25 +23,6 @@ const CategorySelectDialog: React.FC<CategorySelectDialogProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
-
-  const getCategoryIcon = (categoryName: string) => {
-    switch (categoryName) {
-      case "Receitas":
-      case "Recipes":
-        return "🌿";
-      case "Construção":
-      case "Construction":
-        return "🏡";
-      case "Arquitetura":
-      case "Architecture":
-        return "🏛️";
-      case "Educação":
-      case "Education":
-        return "📚";
-      default:
-        return "📁";
-    }
-  };
 
   const handleConfirm = () => {
     if (selectedCategory) {
@@ -115,7 +97,7 @@ const CategorySelectDialog: React.FC<CategorySelectDialogProps> = ({
                     >
                       <div className="flex items-center space-x-3">
                         <span className="text-xl">
-                          {getCategoryIcon(category.name)}
+                          {getCategoryIcon(category.name, category.icon)}
                         </span>
                         <span
                           className={`font-bold ${
