@@ -20,6 +20,7 @@
     "documentsCount_plural": "{{count}} documents",
     "documentsInCategory": "in this category",
     "manage": "Manage Categories",
+    "export": "Export Category",
     "modal": {
       "new": {
         "title": "New Category",
@@ -82,6 +83,7 @@
     "noDescription": "No description",
     "view": "View",
     "edit": "Edit",
+    "export": "Export Document",
     "deleteTitle": "Delete Document",
     "deleteConfirmation": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone."
   },
@@ -144,5 +146,47 @@
     "add": "Add",
     "browserNotSupported": "Your browser doesn't support this file type",
     "openPdf": "Open PDF"
+  },
+  "export": {
+    "dialog": {
+      "title": "Export Archive",
+      "description": "Create a complete backup of your data and attachments",
+      "exportingTitle": "Exporting Archive...",
+      "successTitle": "Export Complete",
+      "loadingStats": "Loading export statistics...",
+      "exportStats": "Export Statistics",
+      "exportLocation": "Export Location",
+      "noLocationSelected": "No location selected - choose where to save your archive",
+      "chooseLocation": "Choose Location",
+      "startExport": "Start Export",
+      "errorTitle": "Export Failed",
+      "successMessage": "Your archive has been exported successfully!",
+      "savedTo": "Saved to",
+      "currentItem": "Processing",
+      "exportType": "Export Type",
+      "selection": "Selection"
+    },
+    "stats": {
+      "categories": "Categories",
+      "documents": "Documents",
+      "attachments": "Attachments",
+      "estimatedSize": "Estimated Size"
+    },
+    "fileType": {
+      "name": "Ando Archive Files"
+    },
+    "errors": {
+      "loadStats": "Failed to load export statistics",
+      "chooseLocation": "Failed to choose export location",
+      "unknown": "An unknown error occurred during export"
+    },
+    "types": {
+      "complete": "Complete Archive",
+      "completeDescription": "Export all categories, documents and attachments",
+      "category": "Single Category",
+      "categoryDescription": "Export one category with all its documents",
+      "document": "Single Document",
+      "documentDescription": "Export one document with its attachments"
+    }
   }
 }

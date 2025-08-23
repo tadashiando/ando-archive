@@ -15,6 +15,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useMenuEvents } from "../../hooks/useMenuEvents";
 import { getCategoryIcon } from "../../utils/categoryIcons";
+import ExportDialog from "../Export/ExportDialog";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -60,6 +61,11 @@ const MainLayout: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingCategoryChange, setPendingCategoryChange] =
     useState<Category | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [contextExportType, setContextExportType] = useState<
+    "category" | "document" | null
+  >(null);
+  const [contextExportId, setContextExportId] = useState<number | null>(null);
 
   // Determine sidebar collapse based on view mode
   const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
@@ -123,8 +129,8 @@ const MainLayout: React.FC = () => {
     onManageCategories: () => setCategoryManagementModalOpen(true),
 
     // File menu
-    onExportArchive: () => console.log("Export archive"), // TODO: Implement
-    onImportArchive: () => console.log("Import archive"), // TODO: Implement
+    onExportArchive: () => setExportDialogOpen(true),
+    onImportArchive: () => console.log("Import archive - TODO"),
     onSettings: () => console.log("Settings"),
 
     // View menu
@@ -359,6 +365,24 @@ const MainLayout: React.FC = () => {
     setPendingCategoryChange(null);
   };
 
+  const handleExportCategory = (categoryId: number) => {
+    setContextExportType("category");
+    setContextExportId(categoryId);
+    setExportDialogOpen(true);
+  };
+
+  const handleExportDocument = (documentId: number) => {
+    setContextExportType("document");
+    setContextExportId(documentId);
+    setExportDialogOpen(true);
+  };
+
+  const handleCloseExportDialog = () => {
+    setExportDialogOpen(false);
+    setContextExportType(null);
+    setContextExportId(null);
+  };
+
   // Helper functions
   const getDocumentCreateSubtitle = (categoryName: string) => {
     const categoryKey = categoryName.toLowerCase();
@@ -430,6 +454,7 @@ const MainLayout: React.FC = () => {
                 : undefined
             }
             onClose={viewMode === "viewer" ? handleBackToList : undefined}
+            onExportCategory={handleExportCategory}
           />
         )}
 
@@ -501,6 +526,7 @@ const MainLayout: React.FC = () => {
                         onView={() => handleViewDocument(document.id)}
                         onEdit={() => handleEditDocument(document.id)}
                         onDelete={() => handleDeleteDocument(document.id)}
+                        onExport={() => handleExportDocument(document.id)} 
                       />
                     ))}
 
@@ -560,6 +586,22 @@ const MainLayout: React.FC = () => {
         onDiscard={handleDiscardChanges}
         onSave={handleSaveAndContinue}
         isLoading={false}
+      />
+
+      <ExportDialog
+        isOpen={exportDialogOpen}
+        onClose={handleCloseExportDialog}
+        preselectedType={contextExportType || undefined}
+        preselectedCategoryId={
+          contextExportType === "category"
+            ? contextExportId || undefined
+            : undefined
+        }
+        preselectedDocumentId={
+          contextExportType === "document"
+            ? contextExportId || undefined
+            : undefined
+        }
       />
 
       {/* Document Delete Dialog */}

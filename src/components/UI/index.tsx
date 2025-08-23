@@ -2,7 +2,12 @@
 import React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../utils/cn";
-import { EyeIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentArrowDownIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 
 // === BUTTON COMPONENT ===
@@ -160,6 +165,7 @@ export interface DocumentCardProps extends Omit<CardProps, "variant"> {
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onExport?: () => void;
 }
 
 export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
@@ -172,6 +178,7 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
       onView,
       onEdit,
       onDelete,
+      onExport,
       className,
       ...props
     },
@@ -240,6 +247,14 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
                   icon={<PencilIcon className="h-4 w-4" />}
                   onClick={onEdit}
                   label={t("documents.edit")}
+                />
+              )}
+              {onExport && ( // ADD THIS BLOCK
+                <IconButton
+                  variant="ghost"
+                  icon={<DocumentArrowDownIcon className="h-4 w-4" />}
+                  onClick={onExport}
+                  label={t("documents.export")}
                 />
               )}
               {onDelete && (
@@ -408,10 +423,10 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = "md", className }) => {
   );
 };
 
-export { default as Dialog } from './Dialog';
-export { default as FormModal } from './FormModal';  
-export { default as UnsavedChangesModal } from './UnsavedChangesModal';
-export { FAIcon } from './FAIcon';
+export { default as Dialog } from "./Dialog";
+export { default as FormModal } from "./FormModal";
+export { default as UnsavedChangesModal } from "./UnsavedChangesModal";
+export { FAIcon } from "./FAIcon";
 
 // === CONTAINER COMPONENT ===
 export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {

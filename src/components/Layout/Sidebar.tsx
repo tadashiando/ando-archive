@@ -3,6 +3,7 @@ import {
   XMarkIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
 import { Card, Badge, IconButton } from "../UI";
@@ -18,6 +19,7 @@ interface SidebarProps {
   onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onExportCategory?: (categoryId: number) => void;
   className?: string;
 }
 
@@ -30,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   isCollapsed: propIsCollapsed,
   onToggleCollapse,
+  onExportCategory,
   className = "",
 }) => {
   const { t } = useTranslation();
@@ -146,13 +149,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </div>
 
-                  {showCounts && (
-                    <Badge
-                      variant={isSelected ? "default" : "primary"}
-                      size="sm"
-                    >
-                      {docCount}
-                    </Badge>
+                  {!isCollapsed && showCounts && (
+                    <div className="flex items-center space-x-1">
+                      <Badge
+                        variant={isSelected ? "default" : "primary"}
+                        size="sm"
+                      >
+                        {docCount}
+                      </Badge>
+
+                      {/* ADD EXPORT BUTTON */}
+                      {onExportCategory && (
+                        <IconButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onExportCategory(category.id);
+                          }}
+                          icon={<DocumentArrowDownIcon className="h-3 w-3" />}
+                          label={t("categories.export")}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
               )}

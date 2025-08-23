@@ -20,6 +20,7 @@
     "documentsCount_plural": "{{count}} documentos",
     "documentsInCategory": "nesta categoria",
     "manage": "Gerenciar Categorias",
+    "export": "Exportar Categoria",
     "modal": {
       "new": {
         "title": "Nova Categoria",
@@ -82,6 +83,7 @@
     "noDescription": "Sem descrição",
     "view": "Visualizar",
     "edit": "Editar",
+    "export": "Exportar Documento",
     "deleteTitle": "Deletar Documento",
     "deleteConfirmation": "Tem certeza que deseja deletar \"{{title}}\"? Esta ação não pode ser desfeita."
   },
@@ -144,5 +146,47 @@
     "add": "Adicionar",
     "browserNotSupported": "Seu navegador não suporta este tipo de arquivo",
     "openPdf": "Abrir PDF"
+  },
+  "export": {
+    "dialog": {
+      "title": "Exportar Arquivo",
+      "description": "Criar um backup completo dos seus dados e anexos",
+      "exportingTitle": "Exportando Arquivo...",
+      "successTitle": "Exportação Concluída",
+      "loadingStats": "Carregando estatísticas de exportação...",
+      "exportStats": "Estatísticas de Exportação",
+      "exportLocation": "Local de Exportação",
+      "noLocationSelected": "Nenhum local selecionado - escolha onde salvar seu arquivo",
+      "chooseLocation": "Escolher Local",
+      "startExport": "Iniciar Exportação",
+      "errorTitle": "Falha na Exportação",
+      "successMessage": "Seu arquivo foi exportado com sucesso!",
+      "savedTo": "Salvo em",
+      "currentItem": "Processando",
+      "exportType": "Tipo de Exportação",
+      "selection": "Seleção"
+    },
+    "stats": {
+      "categories": "Categorias",
+      "documents": "Documentos",
+      "attachments": "Anexos",
+      "estimatedSize": "Tamanho Estimado"
+    },
+    "fileType": {
+      "name": "Arquivos Ando Archive"
+    },
+    "errors": {
+      "loadStats": "Falha ao carregar estatísticas de exportação",
+      "chooseLocation": "Falha ao escolher local de exportação",
+      "unknown": "Ocorreu um erro desconhecido durante a exportação"
+    },
+    "types": {
+      "complete": "Arquivo Completo",
+      "completeDescription": "Exportar todas categorias, documentos e anexos",
+      "category": "Categoria Individual",
+      "categoryDescription": "Exportar uma categoria com todos seus documentos",
+      "document": "Documento Individual",
+      "documentDescription": "Exportar um documento com seus anexos"
+    }
   }
 }
