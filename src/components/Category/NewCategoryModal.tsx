@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import FormModal from "../UI/FormModal";
-import { Input, Label, Card, FAIcon } from "../UI";
-import {
-  CATEGORY_ICON_OPTIONS,
-  type IconName,
-} from "../../utils/iconConstants";
+import { Input, Label, Card, CompactIconPicker } from "../UI";
+import type { IconName } from "../../utils/iconConstants";
 
 // Predefined colors for categories
 const CATEGORY_COLORS = [
@@ -108,15 +105,6 @@ const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
     }
   };
 
-  // Group icons by category for better organization
-  const groupedIcons = CATEGORY_ICON_OPTIONS.reduce((acc, icon) => {
-    if (!acc[icon.category]) {
-      acc[icon.category] = [];
-    }
-    acc[icon.category].push(icon);
-    return acc;
-  }, {} as Record<string, (typeof CATEGORY_ICON_OPTIONS)[number][]>);
-
   return (
     <FormModal
       isOpen={isOpen}
@@ -131,7 +119,7 @@ const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
       }
       submitDisabled={!name.trim() || !!nameError}
       isLoading={isLoading}
-      size="xl"
+      size="lg"
     >
       {/* Category Name */}
       <div>
@@ -147,49 +135,14 @@ const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
         {nameError && <p className="text-red-400 text-sm mt-1">{nameError}</p>}
       </div>
 
-      {/* Icon Selection */}
+      {/* Icon Selection - Now Using CompactIconPicker */}
       <div>
         <Label>{t("categories.modal.new.iconField")}</Label>
-        <div className="space-y-4">
-          {Object.entries(groupedIcons).map(([category, icons]) => (
-            <div key={category}>
-              <h4 className="text-sm font-medium sage-text-cream mb-2 capitalize">
-                {category}
-              </h4>
-              <div className="grid grid-cols-8 gap-2">
-                {icons.map((icon) => (
-                  <Card
-                    key={icon.name}
-                    variant="ghost"
-                    padding="sm"
-                    className={`
-                      cursor-pointer transition-all duration-200 hover:sage-bg-light
-                      ${
-                        selectedIcon === icon.name
-                          ? "sage-bg-gold border-sage-gold text-gray-800"
-                          : "sage-bg-medium hover:sage-bg-light"
-                      }
-                    `}
-                    onClick={() => setSelectedIcon(icon.name)}
-                    title={icon.label}
-                  >
-                    <div className="flex justify-center">
-                      <FAIcon
-                        name={icon.name}
-                        size="1.25rem"
-                        className={
-                          selectedIcon === icon.name
-                            ? "text-gray-800"
-                            : "sage-text-cream"
-                        }
-                      />
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <CompactIconPicker
+          selectedIcon={selectedIcon}
+          onIconSelect={setSelectedIcon}
+          disabled={isLoading}
+        />
       </div>
 
       {/* Color Selection */}
@@ -224,7 +177,14 @@ const NewCategoryModal: React.FC<NewCategoryModalProps> = ({
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ backgroundColor: selectedColor }}
           >
-            <FAIcon name={selectedIcon} size="1.25rem" className="text-white" />
+            <div className="text-white text-xl">
+              {/* Using the getCategoryIcon helper for preview */}
+              {React.createElement("span", {
+                className: "fa-icon fa-solid",
+                style: { fontSize: "1.25rem" },
+                children: selectedIcon,
+              })}
+            </div>
           </div>
           <div>
             <p className="font-bold sage-text-cream">

@@ -428,6 +428,7 @@ export { default as FormModal } from "./FormModal";
 export { default as UnsavedChangesModal } from "./UnsavedChangesModal";
 export { FAIcon } from "./FAIcon";
 export { default as LayoutToggle, type LayoutMode } from "./LayoutToggle";
+export { default as CompactIconPicker } from "./CompactIconPicker";
 
 // === CONTAINER COMPONENT ===
 export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {

@@ -22,6 +22,13 @@
     "manage": "Manage Categories",
     "export": "Export Category",
     "modal": {
+      "iconPicker": {
+        "popular": "Popular",
+        "selectIcon": "Select an icon",
+        "searchIcons": "Search icons...",
+        "noResults": "No icons found",
+        "showingResults": "Showing 24 of {{total}} icons"
+      },
       "new": {
         "title": "New Category",
         "subtitle": "Create a new category to organize your documents",

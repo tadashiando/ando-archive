@@ -22,6 +22,13 @@
     "manage": "Gerenciar Categorias",
     "export": "Exportar Categoria",
     "modal": {
+      "iconPicker": {
+        "popular": "Populares",
+        "selectIcon": "Selecione um ícone",
+        "searchIcons": "Buscar ícones...",
+        "noResults": "Nenhum ícone encontrado",
+        "showingResults": "Mostrando 24 de {{total}} ícones"
+      },
       "new": {
         "title": "Nova Categoria",
         "subtitle": "Criar nova categoria para organizar seus documentos",

@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";
-import { Dialog, Button, IconButton, Card, Input, Label, FAIcon } from "../UI";
 import {
-  CATEGORY_ICON_OPTIONS,
-  type IconName,
-} from "../../utils/iconConstants";
+  Dialog,
+  Button,
+  IconButton,
+  Card,
+  Input,
+  Label,
+  CompactIconPicker,
+} from "../UI";
+import type { IconName } from "../../utils/iconConstants";
 import { getCategoryIcon } from "../../utils/categoryIcons";
 import { db } from "../../database";
 import type { Category } from "../../database";
@@ -71,7 +76,7 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
     if (isOpen) {
       loadCategoriesWithCounts();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, categories]);
 
   const loadCategoriesWithCounts = async () => {
@@ -243,15 +248,6 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
     );
   };
 
-  // Group icons by category for icon selector
-  const groupedIcons = CATEGORY_ICON_OPTIONS.reduce((acc, icon) => {
-    if (!acc[icon.category]) {
-      acc[icon.category] = [];
-    }
-    acc[icon.category].push(icon);
-    return acc;
-  }, {} as Record<string, (typeof CATEGORY_ICON_OPTIONS)[number][]>);
-
   return (
     <>
       <Dialog
@@ -307,50 +303,16 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
                     />
                   </div>
 
-                  {/* Icon Selection */}
+                  {/* Icon Selection - Now Using CompactIconPicker */}
                   <div>
                     <Label>{t("categories.modal.new.iconField")}</Label>
-                    <div className="max-h-32 overflow-y-auto">
-                      <div className="grid grid-cols-10 gap-2">
-                        {Object.values(groupedIcons)
-                          .flat()
-                          .map((icon) => (
-                            <Card
-                              key={icon.name}
-                              variant="ghost"
-                              padding="sm"
-                              className={`
-                              cursor-pointer transition-all duration-200 hover:sage-bg-light
-                              ${
-                                category.newIcon === icon.name
-                                  ? "sage-bg-gold border-sage-gold"
-                                  : "sage-bg-dark hover:sage-bg-light"
-                              }
-                            `}
-                              onClick={() =>
-                                updateEditingCategory(
-                                  category.id,
-                                  "newIcon",
-                                  icon.name
-                                )
-                              }
-                              title={icon.label}
-                            >
-                              <div className="flex justify-center">
-                                <FAIcon
-                                  name={icon.name as IconName}
-                                  size="1rem"
-                                  className={
-                                    category.newIcon === icon.name
-                                      ? "text-gray-800"
-                                      : "sage-text-cream"
-                                  }
-                                />
-                              </div>
-                            </Card>
-                          ))}
-                      </div>
-                    </div>
+                    <CompactIconPicker
+                      selectedIcon={category.newIcon as IconName}
+                      onIconSelect={(icon) =>
+                        updateEditingCategory(category.id, "newIcon", icon)
+                      }
+                      disabled={isLoading}
+                    />
                   </div>
 
                   {/* Color Selection */}
