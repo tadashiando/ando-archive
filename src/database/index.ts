@@ -7,7 +7,17 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  parent_id: number | null;
+  description: string | null;
+  level: number;
+  sort_order: number;
   created_at: string;
+}
+
+export interface CategoryWithChildren extends Category {
+  subcategories?: Category[];
+  documentCount?: number;
+  totalDocumentCount?: number; // Includes subcategories
 }
 
 export interface Document {
@@ -42,18 +52,23 @@ class DatabaseManager {
   private async createTables() {
     if (!this.db) throw new Error("Database not initialized");
 
-    // Categorias
+    // Categories with subcategory support
     await this.db.execute(`
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         icon TEXT DEFAULT 'folder',
         color TEXT DEFAULT '#6B7280',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        parent_id INTEGER DEFAULT NULL,
+        description TEXT DEFAULT NULL,
+        level INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE CASCADE
       )
     `);
 
-    // Documentos
+    // Documents (unchanged)
     await this.db.execute(`
       CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +82,7 @@ class DatabaseManager {
       )
     `);
 
-    // Anexos
+    // Attachments (unchanged)
     await this.db.execute(`
       CREATE TABLE IF NOT EXISTS attachments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,33 +103,207 @@ class DatabaseManager {
     const categories = (await this.db.select(
       "SELECT COUNT(*) as count FROM categories"
     )) as { count: number }[];
+
     if (categories[0].count === 0) {
+      // Insert root categories
       await this.db.execute(`
-        INSERT INTO categories (name, icon, color) VALUES 
-        ('Receitas', 'utensils', '#EA580C'),
-        ('Construção', 'hammer', '#2563EB'),
-        ('Arquitetura', 'drafting-compass', '#059669'),
-        ('Educação', 'graduation-cap', '#7C3AED')
+        INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES 
+        ('Receitas', 'utensils', '#EA580C', NULL, 'Todas as suas receitas culinárias organizadas', 0, 1),
+        ('Construção', 'hammer', '#2563EB', NULL, 'Projetos e documentação de construção', 0, 2),
+        ('Arquitetura', 'drafting-compass', '#059669', NULL, 'Projetos arquitetônicos e design', 0, 3),
+        ('Educação', 'graduation-cap', '#7C3AED', NULL, 'Materiais educacionais e aprendizado', 0, 4)
       `);
+
+      // Get the inserted root category IDs
+      const rootCategories = (await this.db.select(
+        "SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY sort_order"
+      )) as Array<{ id: number; name: string }>;
+
+      // Insert subcategories for each root category
+      for (const rootCat of rootCategories) {
+        switch (rootCat.name) {
+          case "Receitas":
+            await this.db.execute(
+              `
+              INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES 
+              ('Doces', 'cookie', '#F59E0B', ?, 'Sobremesas, bolos, tortas e doces em geral', 1, 1),
+              ('Salgados', 'pizza', '#EF4444', ?, 'Pratos principais, aperitivos e lanches', 1, 2),
+              ('Bebidas', 'coffee', '#8B5CF6', ?, 'Sucos, drinks, cafés e chás especiais', 1, 3),
+              ('Massas', 'bread', '#10B981', ?, 'Massas caseiras, pães e fermentados', 1, 4)
+            `,
+              [rootCat.id, rootCat.id, rootCat.id, rootCat.id]
+            );
+            break;
+
+          case "Construção":
+            await this.db.execute(
+              `
+              INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES 
+              ('Elétrica', 'bolt', '#10B981', ?, 'Instalações e projetos elétricos', 1, 1),
+              ('Hidráulica', 'wrench', '#3B82F6', ?, 'Encanamento e sistemas hidráulicos', 1, 2),
+              ('Estrutural', 'building', '#F59E0B', ?, 'Fundações, vigas e estruturas', 1, 3),
+              ('Acabamento', 'paint-brush', '#EF4444', ?, 'Pintura, revestimentos e detalhes', 1, 4)
+            `,
+              [rootCat.id, rootCat.id, rootCat.id, rootCat.id]
+            );
+            break;
+
+          case "Arquitetura":
+            await this.db.execute(
+              `
+              INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES 
+              ('Residencial', 'house', '#3B82F6', ?, 'Projetos para casas e apartamentos', 1, 1),
+              ('Comercial', 'briefcase', '#F59E0B', ?, 'Escritórios, lojas e estabelecimentos', 1, 2),
+              ('Paisagismo', 'tree', '#10B981', ?, 'Jardins, parques e áreas verdes', 1, 3)
+            `,
+              [rootCat.id, rootCat.id, rootCat.id]
+            );
+            break;
+
+          case "Educação":
+            await this.db.execute(
+              `
+              INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES 
+              ('Cursos', 'book', '#3B82F6', ?, 'Material de cursos e treinamentos', 1, 1),
+              ('Certificações', 'certificate', '#F59E0B', ?, 'Documentos de certificação e diplomas', 1, 2),
+              ('Pesquisa', 'search', '#10B981', ?, 'Artigos, papers e material de pesquisa', 1, 3)
+            `,
+              [rootCat.id, rootCat.id, rootCat.id]
+            );
+            break;
+        }
+      }
     }
   }
 
-  // === CATEGORIAS ===
+  // === CATEGORIES WITH SUBCATEGORY SUPPORT ===
+
+  // Get all root categories with their subcategories
   async getCategories(): Promise<Category[]> {
     if (!this.db) throw new Error("Database not initialized");
-    return await this.db.select("SELECT * FROM categories ORDER BY name");
+    return await this.db.select(
+      "SELECT * FROM categories ORDER BY level ASC, sort_order ASC, name ASC"
+    );
   }
 
+  // Get root categories only
+  async getRootCategories(): Promise<Category[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select(
+      "SELECT * FROM categories WHERE parent_id IS NULL ORDER BY sort_order ASC, name ASC"
+    );
+  }
+
+  // Get subcategories for a parent category
+  async getSubcategories(parentId: number): Promise<Category[]> {
+    if (!this.db) throw new Error("Database not initialized");
+    return await this.db.select(
+      "SELECT * FROM categories WHERE parent_id = ? ORDER BY sort_order ASC, name ASC",
+      [parentId]
+    );
+  }
+
+  // Get category hierarchy (root with subcategories)
+  async getCategoriesWithSubcategories(): Promise<CategoryWithChildren[]> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const rootCategories = await this.getRootCategories();
+    const result: CategoryWithChildren[] = [];
+
+    for (const rootCat of rootCategories) {
+      const subcategories = await this.getSubcategories(rootCat.id);
+      const categoryWithChildren: CategoryWithChildren = {
+        ...rootCat,
+        subcategories,
+        documentCount: 0,
+        totalDocumentCount: 0,
+      };
+
+      // Calculate document counts
+      const directDocuments = (await this.db.select(
+        "SELECT COUNT(*) as count FROM documents WHERE category_id = ?",
+        [rootCat.id]
+      )) as { count: number }[];
+      categoryWithChildren.documentCount = directDocuments[0].count;
+
+      // Calculate total document count (including subcategories)
+      let totalCount = categoryWithChildren.documentCount;
+      for (const subcat of subcategories) {
+        const subcatDocuments = (await this.db.select(
+          "SELECT COUNT(*) as count FROM documents WHERE category_id = ?",
+          [subcat.id]
+        )) as { count: number }[];
+        totalCount += subcatDocuments[0].count;
+      }
+      categoryWithChildren.totalDocumentCount = totalCount;
+
+      result.push(categoryWithChildren);
+    }
+
+    return result;
+  }
+
+  // Get category by ID with parent information
+  async getCategoryById(id: number): Promise<Category | null> {
+    if (!this.db) throw new Error("Database not initialized");
+    const categories = (await this.db.select(
+      "SELECT * FROM categories WHERE id = ?",
+      [id]
+    )) as Category[];
+    return categories.length > 0 ? categories[0] : null;
+  }
+
+  // Get full category path (for breadcrumbs)
+  async getCategoryPath(categoryId: number): Promise<Category[]> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const path: Category[] = [];
+    let currentId: number | null = categoryId;
+
+    while (currentId !== null) {
+      const category = await this.getCategoryById(currentId);
+      if (category) {
+        path.unshift(category); // Add to beginning
+        currentId = category.parent_id;
+      } else {
+        break;
+      }
+    }
+
+    return path;
+  }
+
+  // Create category (can be root or subcategory)
   async createCategory(
     name: string,
     icon: string = "folder",
-    color: string = "#6B7280"
+    color: string = "#6B7280",
+    parentId: number | null = null,
+    description: string | null = null
   ): Promise<Category> {
     if (!this.db) throw new Error("Database not initialized");
 
+    const level = parentId ? 1 : 0; // Simple level calculation
+
+    // Get next sort order for the level
+    const sortOrderResult = (await this.db.select(
+      parentId
+        ? "SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM categories WHERE parent_id = ?"
+        : "SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM categories WHERE parent_id IS NULL",
+      parentId ? [parentId] : []
+    )) as { next_order: number }[];
+
     const result = await this.db.execute(
-      "INSERT INTO categories (name, icon, color) VALUES (?, ?, ?)",
-      [name, icon, color]
+      "INSERT INTO categories (name, icon, color, parent_id, description, level, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        name,
+        icon,
+        color,
+        parentId,
+        description,
+        level,
+        sortOrderResult[0].next_order,
+      ]
     );
 
     const categories = (await this.db.select(
@@ -124,7 +313,67 @@ class DatabaseManager {
     return categories[0];
   }
 
-  // === DOCUMENTOS ===
+  // Update category
+  async updateCategory(
+    id: number,
+    name: string,
+    icon: string,
+    color: string,
+    description?: string | null
+  ): Promise<Category> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    await this.db.execute(
+      "UPDATE categories SET name = ?, icon = ?, color = ?, description = ? WHERE id = ?",
+      [name, icon, color, description || null, id]
+    );
+
+    const categories = (await this.db.select(
+      "SELECT * FROM categories WHERE id = ?",
+      [id]
+    )) as Category[];
+    return categories[0];
+  }
+
+  // Delete category (handles subcategories)
+  async deleteCategory(id: number, targetCategoryId?: number): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Get subcategories
+    const subcategories = await this.getSubcategories(id);
+
+    // Check if there are documents in this category or subcategories
+    const documents = await this.getDocumentsByCategory(id);
+    const allDocuments = [...documents];
+
+    for (const subcat of subcategories) {
+      const subcatDocs = await this.getDocumentsByCategory(subcat.id);
+      allDocuments.push(...subcatDocs);
+    }
+
+    if (allDocuments.length > 0) {
+      if (targetCategoryId) {
+        // Move all documents to target category
+        for (const doc of allDocuments) {
+          await this.db.execute(
+            "UPDATE documents SET category_id = ? WHERE id = ?",
+            [targetCategoryId, doc.id]
+          );
+        }
+      } else {
+        // Delete all documents (this will cascade delete attachments)
+        for (const doc of allDocuments) {
+          await this.deleteDocument(doc.id);
+        }
+      }
+    }
+
+    // Delete the category (CASCADE will delete subcategories)
+    await this.db.execute("DELETE FROM categories WHERE id = ?", [id]);
+  }
+
+  // === DOCUMENTS (mostly unchanged, but with subcategory awareness) ===
+
   async getDocumentsByCategory(categoryId: number): Promise<Document[]> {
     if (!this.db) throw new Error("Database not initialized");
     return await this.db.select(
@@ -133,6 +382,32 @@ class DatabaseManager {
     );
   }
 
+  // Get documents by category including subcategories
+  async getDocumentsByCategoryTree(
+    rootCategoryId: number
+  ): Promise<Document[]> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    // Get documents from root category
+    const rootDocs = await this.getDocumentsByCategory(rootCategoryId);
+
+    // Get documents from all subcategories
+    const subcategories = await this.getSubcategories(rootCategoryId);
+    const allDocs = [...rootDocs];
+
+    for (const subcat of subcategories) {
+      const subcatDocs = await this.getDocumentsByCategory(subcat.id);
+      allDocs.push(...subcatDocs);
+    }
+
+    // Sort by updated_at desc
+    return allDocs.sort(
+      (a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+  }
+
+  // Rest of the methods remain the same...
   async createDocument(
     title: string,
     description: string,
@@ -173,7 +448,6 @@ class DatabaseManager {
     return documents[0];
   }
 
-  // Adicionar no DatabaseManager
   async getDocumentById(id: number): Promise<Document | null> {
     if (!this.db) throw new Error("Database not initialized");
     const documents = (await this.db.select(
@@ -203,13 +477,12 @@ class DatabaseManager {
       return null;
     });
 
-    // Execute all file deletions, collect any errors
     const fileResults = await Promise.all(fileDeletePromises);
     const fileErrors = fileResults.filter(
       (result): result is string => result !== null
     );
 
-    // Try to remove document directory - but don't fail if it doesn't work
+    // Try to remove document directory
     let directoryError: string | null = null;
     try {
       const appDir = await appDataDir();
@@ -224,24 +497,20 @@ class DatabaseManager {
         await remove(attachmentsDir, { recursive: true });
       }
     } catch (error) {
-      // Don't throw here - just log the error and continue
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       directoryError = `Could not remove directory: ${errorMessage}`;
     }
 
-    // Delete from database (this is the critical operation)
+    // Delete from database
     await this.db.execute("DELETE FROM documents WHERE id = ?", [id]);
 
-    // Collect all warnings but don't fail the operation
     const allWarnings = [...fileErrors];
     if (directoryError) {
       allWarnings.push(directoryError);
     }
 
-    // Only log warnings if any exist, but don't throw
     if (allWarnings.length > 0) {
-      // Log warnings but don't throw - the document was successfully deleted
       const warningMessage = `Document deleted successfully, but with warnings: ${allWarnings.join(
         "; "
       )}`;
@@ -252,7 +521,6 @@ class DatabaseManager {
   async deleteAttachment(attachmentId: number): Promise<void> {
     if (!this.db) throw new Error("Database not initialized");
 
-    // Get attachment info before deleting
     const attachments = (await this.db.select(
       "SELECT * FROM attachments WHERE id = ?",
       [attachmentId]
@@ -264,7 +532,6 @@ class DatabaseManager {
 
     const attachment = attachments[0];
 
-    // Delete physical file
     try {
       const normalizedPath = attachment.filepath.replace(/\//g, "\\");
       const fileExists = await exists(normalizedPath);
@@ -272,19 +539,16 @@ class DatabaseManager {
         await remove(normalizedPath);
       }
     } catch (error) {
-      // Log but don't fail - file might already be gone
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       console.warn(`Could not delete attachment file: ${errorMessage}`);
     }
 
-    // Delete from database
     await this.db.execute("DELETE FROM attachments WHERE id = ?", [
       attachmentId,
     ]);
   }
 
-  // === BUSCA ===
   async searchDocuments(query: string): Promise<Document[]> {
     if (!this.db) throw new Error("Database not initialized");
     return await this.db.select(
@@ -295,7 +559,6 @@ class DatabaseManager {
     );
   }
 
-  // === ANEXOS ===
   async getAttachments(documentId: number): Promise<Attachment[]> {
     if (!this.db) throw new Error("Database not initialized");
     return await this.db.select(
@@ -323,53 +586,6 @@ class DatabaseManager {
       [result.lastInsertId]
     )) as Attachment[];
     return attachments[0];
-  }
-
-  // === CATEGORIA CRUD EXTENDED ===
-
-  async updateCategory(
-    id: number,
-    name: string,
-    icon: string,
-    color: string
-  ): Promise<Category> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    await this.db.execute(
-      "UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?",
-      [name, icon, color, id]
-    );
-
-    const categories = (await this.db.select(
-      "SELECT * FROM categories WHERE id = ?",
-      [id]
-    )) as Category[];
-    return categories[0];
-  }
-
-  async deleteCategory(id: number, targetCategoryId?: number): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    // Check if there are documents in this category
-    const documents = await this.getDocumentsByCategory(id);
-
-    if (documents.length > 0) {
-      if (targetCategoryId) {
-        // Move documents to target category
-        await this.db.execute(
-          "UPDATE documents SET category_id = ? WHERE category_id = ?",
-          [targetCategoryId, id]
-        );
-      } else {
-        // Delete all documents in this category (cascade delete will handle attachments)
-        for (const document of documents) {
-          await this.deleteDocument(document.id);
-        }
-      }
-    }
-
-    // Now safe to delete the category
-    await this.db.execute("DELETE FROM categories WHERE id = ?", [id]);
   }
 
   async getCategoryByName(name: string): Promise<Category | null> {

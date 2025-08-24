@@ -21,6 +21,10 @@
     "documentsInCategory": "nesta categoria",
     "manage": "Gerenciar Categorias",
     "export": "Exportar Categoria",
+    "addSubcategory": "Adicionar subcategoria",
+    "noCategories": "Nenhuma categoria encontrada",
+    "subcategories": "Subcategorias",
+    "documentsInSubcategory": "documentos nesta subcategoria",
     "modal": {
       "iconPicker": {
         "popular": "Populares",
@@ -28,6 +32,13 @@
         "searchIcons": "Buscar ícones...",
         "noResults": "Nenhum ícone encontrado",
         "showingResults": "Mostrando 24 de {{total}} ícones"
+      },
+      "subcategory": {
+        "title": "Nova Subcategoria",
+        "subtitle": "Criar subcategoria em {{parent}}",
+        "parentCategory": "Categoria Pai",
+        "descriptionField": "Descrição (opcional)",
+        "descriptionPlaceholder": "Uma breve descrição da subcategoria..."
       },
       "new": {
         "title": "Nova Categoria",

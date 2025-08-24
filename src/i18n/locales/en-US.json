@@ -21,6 +21,10 @@
     "documentsInCategory": "in this category",
     "manage": "Manage Categories",
     "export": "Export Category",
+    "addSubcategory": "Add subcategory",
+    "noCategories": "No categories found",
+    "subcategories": "Subcategories",
+    "documentsInSubcategory": "documents in this subcategory",
     "modal": {
       "iconPicker": {
         "popular": "Popular",
@@ -28,6 +32,13 @@
         "searchIcons": "Search icons...",
         "noResults": "No icons found",
         "showingResults": "Showing 24 of {{total}} icons"
+      },
+      "subcategory": {
+        "title": "New Subcategory",
+        "subtitle": "Create subcategory in {{parent}}",
+        "parentCategory": "Parent Category",
+        "descriptionField": "Description (optional)",
+        "descriptionPlaceholder": "A brief description of the subcategory..."
       },
       "new": {
         "title": "New Category",

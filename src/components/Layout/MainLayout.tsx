@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { db } from "../../database";
-import type { Category, Document } from "../../database";
+import type { Category, CategoryWithChildren, Document } from "../../database";
 import { Spinner, DocumentCard, CreateDocumentCard, Dialog } from "../UI";
 import {
   NewCategoryModal,
   CategorySelectModal,
   CategoryManagementModal,
+  SubcategoryModal,
 } from "../Category";
 import { UnsavedChangesModal } from "../UI";
 import DocumentEditor from "../Documents/Editor/DocumentEditor";
@@ -21,15 +22,20 @@ import type { LayoutMode } from "../UI/LayoutToggle";
 import DocumentListView from "../Documents/DocumentListView";
 import LayoutToggle from "../UI/LayoutToggle";
 import CompactDocumentRow from "../Documents/CompactDocumentRow";
+import CategoryBreadcrumb from "../Category/CategoryBreadcrumb";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
 
   // Core data states
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
-  );
+  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
+  const [selectedCategory, setSelectedCategory] =
+    useState<CategoryWithChildren | null>(null);
+  const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(false);
+  const [parentCategoryForSubcategory, setParentCategoryForSubcategory] =
+    useState<CategoryWithChildren | null>(null);
+  const [categoryPath, setCategoryPath] = useState<Category[]>([]);
+
   const [documents, setDocuments] = useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -159,11 +165,39 @@ const MainLayout: React.FC = () => {
 
   const loadCategories = async () => {
     try {
-      const cats = await db.getCategories();
+      const cats = await db.getCategoriesWithSubcategories();
       setCategories(cats);
-      if (cats.length > 0 && !selectedCategory) {
-        setSelectedCategory(cats[0]);
+
+      if (selectedCategory) {
+        const updatedSelected = findCategoryInHierarchy(
+          cats,
+          selectedCategory.id
+        );
+        if (updatedSelected) {
+          setSelectedCategory(updatedSelected);
+          await updateCategoryPath(updatedSelected.id);
+        }
+      } else if (cats.length > 0) {
+        // Auto-select first available category/subcategory
+        const firstCategory = cats[0];
+        if (
+          firstCategory.subcategories &&
+          firstCategory.subcategories.length > 0
+        ) {
+          const firstSubcategory: CategoryWithChildren = {
+            ...firstCategory.subcategories[0],
+            subcategories: [],
+            documentCount: 0,
+            totalDocumentCount: 0,
+          };
+          setSelectedCategory(firstSubcategory);
+          await updateCategoryPath(firstSubcategory.id);
+        } else {
+          setSelectedCategory(firstCategory);
+          await updateCategoryPath(firstCategory.id);
+        }
       }
+
       setLoading(false);
     } catch (error) {
       console.error("Error loading categories:", error);
@@ -171,15 +205,26 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const loadDocuments = async (categoryId: number) => {
+  const loadDocuments = async (
+    categoryId: number,
+    includeSubcategories = false
+  ) => {
     try {
-      const docs = await db.getDocumentsByCategory(categoryId);
+      let docs: Document[] = [];
+
+      if (includeSubcategories) {
+        docs = await db.getDocumentsByCategoryTree(categoryId);
+      } else {
+        docs = await db.getDocumentsByCategory(categoryId);
+      }
+
       docs.sort((a, b) =>
         a.title.localeCompare(b.title, "pt-BR", {
           sensitivity: "base",
-          numeric: true, // Para ordenar "Doc 2" antes de "Doc 10"
+          numeric: true,
         })
       );
+
       setDocuments(docs);
     } catch (error) {
       console.error("Error loading documents:", error);
@@ -213,23 +258,75 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const handleCategoryChange = (category: Category) => {
+  const handleCategoryChange = async (category: CategoryWithChildren) => {
     if (viewMode === "viewer") {
-      // Always exit viewer and go to list when changing categories
       setViewMode("list");
       setSelectedDocumentId(null);
       setSelectedCategory(category);
     } else if (viewMode === "editor" && hasUnsavedChanges) {
-      // Editor with unsaved changes - ask for confirmation
       setPendingCategoryChange(category);
       setUnsavedChangesModalOpen(true);
     } else {
-      // Safe to change category (list mode or editor without changes)
       setSelectedCategory(category);
+      await updateCategoryPath(category.id);
+
+      // Determine if we should include subcategories in document loading
+      const includeSubcategories =
+        category.level === 0 &&
+        category.subcategories &&
+        category.subcategories.length > 0;
+
+      await loadDocuments(category.id, includeSubcategories);
+
       if (viewMode === "editor") {
         setViewMode("list");
         setEditingDocumentId(null);
       }
+    }
+  };
+
+  const handleCreateSubcategory = (parentCategory: CategoryWithChildren) => {
+    setParentCategoryForSubcategory(parentCategory);
+    setSubcategoryModalOpen(true);
+  };
+
+  // Handle subcategory creation
+  const handleSubcategoryCreated = async (
+    name: string,
+    icon: string,
+    color: string,
+    parentId: number,
+    description?: string
+  ) => {
+    try {
+      await db.createCategory(name, icon, color, parentId, description);
+      await loadCategories();
+      console.log("Subcategory created successfully");
+    } catch (error) {
+      console.error("Error creating subcategory:", error);
+      throw error;
+    }
+  };
+
+  const handleCloseSubcategoryModal = () => {
+    setSubcategoryModalOpen(false);
+    setParentCategoryForSubcategory(null);
+  };
+
+  const handleBreadcrumbCategoryClick = async (category: Category) => {
+    const categoryWithChildren = findCategoryInHierarchy(
+      categories,
+      category.id
+    );
+    if (categoryWithChildren) {
+      await handleCategoryChange(categoryWithChildren);
+    }
+  };
+
+  const handleHomeClick = async () => {
+    if (categories.length > 0) {
+      const firstCategory = categories[0];
+      await handleCategoryChange(firstCategory);
     }
   };
 
@@ -399,6 +496,55 @@ const MainLayout: React.FC = () => {
   };
 
   // Helper functions
+  // Find category by ID in the hierarchical structure
+  const findCategoryInHierarchy = (
+    categories: CategoryWithChildren[],
+    categoryId: number
+  ): CategoryWithChildren | null => {
+    for (const category of categories) {
+      if (category.id === categoryId) {
+        return category;
+      }
+
+      if (category.subcategories) {
+        for (const subcategory of category.subcategories) {
+          if (subcategory.id === categoryId) {
+            return {
+              ...subcategory,
+              subcategories: [],
+              documentCount: categoryCounts[subcategory.id] || 0,
+              totalDocumentCount: categoryCounts[subcategory.id] || 0,
+            };
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  const updateCategoryPath = async (categoryId: number) => {
+    try {
+      const path = await db.getCategoryPath(categoryId);
+      setCategoryPath(path);
+    } catch (error) {
+      console.error("Error loading category path:", error);
+      setCategoryPath([]);
+    }
+  };
+
+  const getAllCategoryNames = (
+    categories: CategoryWithChildren[]
+  ): string[] => {
+    const names: string[] = [];
+    categories.forEach((category) => {
+      names.push(category.name);
+      if (category.subcategories) {
+        category.subcategories.forEach((sub) => names.push(sub.name));
+      }
+    });
+    return names;
+  };
+
   const getDocumentCreateSubtitle = (categoryName: string) => {
     const categoryKey = categoryName.toLowerCase();
     const subtitleKey = `documents.createSubtitle.${
@@ -480,6 +626,7 @@ const MainLayout: React.FC = () => {
             }
             onClose={viewMode === "viewer" ? handleBackToList : undefined}
             onExportCategory={handleExportCategory}
+            onCreateSubcategory={handleCreateSubcategory}
           />
         )}
 
@@ -511,6 +658,15 @@ const MainLayout: React.FC = () => {
             <main className="flex-1 p-8 overflow-y-auto sage-bg-deepest space-y-8">
               {selectedCategory ? (
                 <>
+                  {/* NEW BREADCRUMB SECTION */}
+                  {categoryPath.length > 1 && (
+                    <CategoryBreadcrumb
+                      categoryPath={categoryPath}
+                      onCategoryClick={handleBreadcrumbCategoryClick}
+                      onHomeClick={handleHomeClick}
+                      className="mb-4"
+                    />
+                  )}
                   <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-4">
@@ -529,16 +685,36 @@ const MainLayout: React.FC = () => {
                           <h2 className="text-4xl font-black sage-text-white">
                             {selectedCategory.name}
                           </h2>
-                          <p className="sage-text-mist text-lg font-medium mt-1">
-                            {t("categories.documentsCount", {
-                              count: documents.length,
-                            })}{" "}
-                            {t("categories.documentsInCategory")}
-                          </p>
+
+                          {/* UPDATED SUBTITLE WITH SUBCATEGORY CONTEXT */}
+                          <div className="flex items-center space-x-2">
+                            <p className="sage-text-mist text-lg font-medium mt-1">
+                              {t("categories.documentsCount", {
+                                count: documents.length,
+                              })}{" "}
+                              {selectedCategory.level > 0
+                                ? t("categories.documentsInSubcategory")
+                                : t("categories.documentsInCategory")}
+                            </p>
+
+                            {/* Subcategory indicator */}
+                            {selectedCategory.level > 0 && (
+                              <span className="text-xs bg-sage-medium sage-text-cream px-2 py-1 rounded-full">
+                                {t("categories.subcategory", "Subcategory")}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Show description if available */}
+                          {selectedCategory.description && (
+                            <p className="sage-text-light text-sm mt-2 italic">
+                              {selectedCategory.description}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      {/* Layout Toggle */}
+                      {/* Layout Toggle unchanged */}
                       <LayoutToggle
                         currentMode={layoutMode}
                         onModeChange={setLayoutMode}
@@ -676,6 +852,14 @@ const MainLayout: React.FC = () => {
         existingCategories={categories.map((cat) => cat.name)}
       />
 
+      {/* NEW SUBCATEGORY MODAL */}
+      <SubcategoryModal
+        isOpen={subcategoryModalOpen}
+        onClose={handleCloseSubcategoryModal}
+        parentCategory={parentCategoryForSubcategory}
+        onSubcategoryCreate={handleSubcategoryCreated}
+        existingNames={getAllCategoryNames(categories)}
+      />
       <CategoryManagementModal
         isOpen={categoryManagementModalOpen}
         onClose={() => setCategoryManagementModalOpen(false)}
