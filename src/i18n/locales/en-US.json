@@ -72,8 +72,18 @@
       "deleted": "Category \"{{name}}\" deleted successfully"
     }
   },
+  "layout": {
+    "cards": "Card View",
+    "compact": "Compact View",
+    "list": "List View"
+  },
   "documents": {
     "create": "New Document",
+    "title": "Title",
+    "attachments": "Attachments",
+    "date": "Date",
+    "actions": "Actions",
+    "noDocuments": "No documents in this category",
     "createSubtitle": {
       "recipes": "Add a new recipe",
       "construction": "Document construction project",

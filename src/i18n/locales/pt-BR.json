@@ -72,8 +72,18 @@
       "deleted": "Categoria \"{{name}}\" deletada com sucesso"
     }
   },
+  "layout": {
+    "cards": "Visualização em Cards",
+    "compact": "Visualização Compacta",
+    "list": "Visualização em Lista"
+  },
   "documents": {
     "create": "Novo Documento",
+    "title": "Título",
+    "attachments": "Anexos",
+    "date": "Data",
+    "actions": "Ações",
+    "noDocuments": "Nenhum documento nesta categoria",
     "createSubtitle": {
       "recipes": "Adicionar uma nova receita",
       "construction": "Documentar projeto de construção",

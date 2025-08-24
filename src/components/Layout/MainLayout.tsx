@@ -17,6 +17,10 @@ import { useMenuEvents } from "../../hooks/useMenuEvents";
 import { getCategoryIcon } from "../../utils/categoryIcons";
 import ExportDialog from "../Export/ExportDialog";
 import ImportDialog from "../Import/ImportDialog";
+import type { LayoutMode } from "../UI/LayoutToggle";
+import DocumentListView from "../Documents/DocumentListView";
+import LayoutToggle from "../UI/LayoutToggle";
+import CompactDocumentRow from "../Documents/CompactDocumentRow";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -68,6 +72,7 @@ const MainLayout: React.FC = () => {
   >(null);
   const [contextExportId, setContextExportId] = useState<number | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("compact");
 
   // Determine sidebar collapse based on view mode
   const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
@@ -416,14 +421,6 @@ const MainLayout: React.FC = () => {
     });
   };
 
-  const getAttachmentTypes = () => {
-    const types = ["text"];
-    if (Math.random() > 0.5) types.push("image");
-    if (Math.random() > 0.7) types.push("pdf");
-    if (Math.random() > 0.8) types.push("video");
-    return types;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen sage-bg-deepest">
@@ -437,6 +434,24 @@ const MainLayout: React.FC = () => {
       </div>
     );
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getAttachmentTypesForDocument = (_documentId: number): string[] => {
+    // This is the existing function - keep the same logic
+    const types = ["text"];
+    if (Math.random() > 0.5) types.push("image");
+    if (Math.random() > 0.7) types.push("pdf");
+    if (Math.random() > 0.8) types.push("video");
+    return types;
+  };
+
+  const createAttachmentTypesMap = () => {
+    const map: { [key: number]: string[] } = {};
+    documents.forEach((doc) => {
+      map[doc.id] = getAttachmentTypesForDocument(doc.id);
+    });
+    return map;
+  };
 
   return (
     <div className="h-screen sage-bg-deepest sage-text-white flex flex-col">
@@ -497,59 +512,141 @@ const MainLayout: React.FC = () => {
               {selectedCategory ? (
                 <>
                   <div className="mb-8">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: selectedCategory.color }}
-                      >
-                        <div className="text-white text-2xl">
-                          {getCategoryIcon(
-                            selectedCategory.name,
-                            selectedCategory.icon
-                          )}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: selectedCategory.color }}
+                        >
+                          <div className="text-white text-2xl">
+                            {getCategoryIcon(
+                              selectedCategory.name,
+                              selectedCategory.icon
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <h2 className="text-4xl font-black sage-text-white">
+                            {selectedCategory.name}
+                          </h2>
+                          <p className="sage-text-mist text-lg font-medium mt-1">
+                            {t("categories.documentsCount", {
+                              count: documents.length,
+                            })}{" "}
+                            {t("categories.documentsInCategory")}
+                          </p>
                         </div>
                       </div>
-                      <div>
-                        <h2 className="text-4xl font-black sage-text-white">
-                          {selectedCategory.name}
-                        </h2>
-                        <p className="sage-text-mist text-lg font-medium mt-1">
-                          {t("categories.documentsCount", {
-                            count: documents.length,
-                          })}{" "}
-                          {t("categories.documentsInCategory")}
-                        </p>
-                      </div>
+
+                      {/* Layout Toggle */}
+                      <LayoutToggle
+                        currentMode={layoutMode}
+                        onModeChange={setLayoutMode}
+                        disabled={documents.length === 0}
+                      />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {documents.map((document) => (
-                      <DocumentCard
-                        key={document.id}
-                        title={document.title}
-                        description={
-                          document.description || t("documents.noDescription")
-                        }
-                        date={formatDate(document.created_at)}
-                        attachmentTypes={getAttachmentTypes()}
-                        onView={() => handleViewDocument(document.id)}
-                        onEdit={() => handleEditDocument(document.id)}
-                        onDelete={() => handleDeleteDocument(document.id)}
-                        onExport={() => handleExportDocument(document.id)}
-                      />
-                    ))}
+                  {/* Dynamic Document Rendering based on Layout Mode */}
+                  {layoutMode === "cards" ? (
+                    // Original Cards Layout
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {documents.map((document) => (
+                        <DocumentCard
+                          key={document.id}
+                          title={document.title}
+                          description={
+                            document.description || t("documents.noDescription")
+                          }
+                          date={formatDate(document.created_at)}
+                          attachmentTypes={getAttachmentTypesForDocument(
+                            document.id
+                          )}
+                          onView={() => handleViewDocument(document.id)}
+                          onEdit={() => handleEditDocument(document.id)}
+                          onDelete={() => handleDeleteDocument(document.id)}
+                          onExport={() => handleExportDocument(document.id)}
+                        />
+                      ))}
 
-                    <CreateDocumentCard
-                      title={t("documents.create")}
-                      subtitle={getDocumentCreateSubtitle(
-                        selectedCategory.name
-                      )}
-                      onClick={() => handleCreateDocument(selectedCategory)}
-                    />
-                  </div>
+                      <CreateDocumentCard
+                        title={t("documents.create")}
+                        subtitle={getDocumentCreateSubtitle(
+                          selectedCategory.name
+                        )}
+                        onClick={() => handleCreateDocument(selectedCategory)}
+                      />
+                    </div>
+                  ) : layoutMode === "compact" ? (
+                    // Compact Rows Layout
+                    <div className="space-y-2">
+                      {documents.map((document) => (
+                        <CompactDocumentRow
+                          key={document.id}
+                          document={document}
+                          attachmentTypes={getAttachmentTypesForDocument(
+                            document.id
+                          )}
+                          onView={() => handleViewDocument(document.id)}
+                          onEdit={() => handleEditDocument(document.id)}
+                          onDelete={() => handleDeleteDocument(document.id)}
+                          onExport={() => handleExportDocument(document.id)}
+                        />
+                      ))}
+
+                      {/* Create Document Card - Compact Version */}
+                      <div
+                        className="sage-bg-medium hover:sage-bg-light transition-all duration-200 rounded-xl p-4 cursor-pointer border-2 border-dashed sage-border hover:sage-border-gold group"
+                        onClick={() => handleCreateDocument(selectedCategory)}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 sage-bg-gold rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="text-2xl text-gray-800">🌱</span>
+                          </div>
+                          <div>
+                            <p className="sage-text-cream font-bold">
+                              {t("documents.create")}
+                            </p>
+                            <p className="sage-text-mist text-sm">
+                              {getDocumentCreateSubtitle(selectedCategory.name)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Ultra-Compact List Layout
+                    <div className="space-y-6">
+                      <DocumentListView
+                        documents={documents}
+                        attachmentTypesMap={createAttachmentTypesMap()}
+                        onView={handleViewDocument}
+                        onEdit={handleEditDocument}
+                        onDelete={handleDeleteDocument}
+                        onExport={handleExportDocument}
+                      />
+
+                      {/* Create Document - List Version */}
+                      <div
+                        className="sage-bg-medium hover:sage-bg-light transition-all duration-200 rounded-xl p-3 cursor-pointer border sage-border hover:sage-border-gold group"
+                        onClick={() => handleCreateDocument(selectedCategory)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 sage-bg-gold rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="text-lg text-gray-800">+</span>
+                          </div>
+                          <div>
+                            <p className="sage-text-cream font-medium text-sm">
+                              {t("documents.create")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
+                // Category not selected fallback - unchanged
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <span className="text-6xl mb-4 block">🌲</span>
