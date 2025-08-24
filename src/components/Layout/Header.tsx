@@ -1,4 +1,3 @@
-// src/components/Layout/Header.tsx
 import React from "react";
 import { MagnifyingGlassIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useTranslation } from "react-i18next";

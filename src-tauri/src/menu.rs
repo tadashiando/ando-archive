@@ -1,4 +1,3 @@
-// src-tauri/src/menu.rs - Menu Structure Fix
 use tauri::{menu::*, AppHandle, Emitter, Wry};
 
 pub fn create_app_menu(app: &AppHandle<Wry>) -> Result<Menu<Wry>, Box<dyn std::error::Error>> {

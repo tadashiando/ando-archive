@@ -1,6 +1,5 @@
-// src/utils/categoryIcons.tsx
 import React from "react";
-import { FAIcon } from "../components/UI/FAICon";
+import { FAIcon } from "../components/UI/FAIcon";
 import { FONT_AWESOME_ICONS, type IconName } from "./iconConstants";
 
 // Helper function to get icon for existing categories
