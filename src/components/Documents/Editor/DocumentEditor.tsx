@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { writeFile, exists, mkdir } from "@tauri-apps/plugin-fs";
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { useEditor, EditorContent } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
-import StarterKit from "@tiptap/starter-kit";
 import { db } from "../../../database";
 import type { Category } from "../../../database";
-import { Button, Input, Label } from "../../UI";
+import { Input, Label } from "../../UI";
 import Header from "../../Layout/Header";
 import AttachmentPreview from "./AttachmentPreview";
 import AttachmentList from "./AttachmentList";
+import EnhancedTipTapEditor from "./EnhancedTipTapEditor";
+import EditorErrorBoundary from "./EditorErrorBoundary"; // New Error Boundary
 
 interface AttachmentFile {
   file: File;
@@ -38,30 +38,37 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [initialTitle, setInitialTitle] = useState("");
   const [initialContent, setInitialContent] = useState("");
+  const [editorKey, setEditorKey] = useState(0); // For editor reset
 
   useEffect(() => {
     if (mode === "edit" && editingDocumentId) {
       loadDocumentForEditing();
+    } else {
+      // Set initial content for new documents - SANITIZED
+      const defaultContent = `<p>${t(
+        "modal.createDocument.contentPlaceholder"
+      )}</p>`;
+      setContent(defaultContent);
+      setInitialContent(defaultContent);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingDocumentId, mode]);
 
   // Track changes for unsaved content detection
   useEffect(() => {
-    const hasChanges =
-      title !== initialTitle || (editor?.getHTML() || "") !== initialContent;
+    const hasChanges = title !== initialTitle || content !== initialContent;
 
     if (onContentChange) {
       onContentChange(hasChanges);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, initialTitle, initialContent, onContentChange]);
+  }, [title, content, initialTitle, initialContent, onContentChange]);
 
   const loadExistingAttachments = async (documentId: number) => {
     try {
@@ -94,11 +101,11 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       if (document) {
         setTitle(document.title);
         setInitialTitle(document.title);
-        setInitialContent(document.text_content);
 
-        if (editor) {
-          editor.commands.setContent(document.text_content);
-        }
+        // Sanitize content when loading from database
+        const sanitizedContent = sanitizeContent(document.text_content);
+        setContent(sanitizedContent);
+        setInitialContent(sanitizedContent);
 
         await loadExistingAttachments(editingDocumentId);
       }
@@ -109,26 +116,27 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     }
   };
 
-  // Editor TipTap with change tracking
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: `<p>${t("modal.createDocument.contentPlaceholder")}</p>`,
-    editorProps: {
-      attributes: {
-        class:
-          "sage-text-cream p-6 rounded-xl min-h-[400px] focus:outline-none prose prose-invert max-w-none prose-lg",
-      },
-    },
-    onUpdate: () => {
-      // Trigger change detection when content changes
-      const hasChanges =
-        title !== initialTitle || (editor?.getHTML() || "") !== initialContent;
+  // Content sanitization helper
+  const sanitizeContent = (htmlContent: string): string => {
+    if (!htmlContent)
+      return `<p>${t("modal.createDocument.contentPlaceholder")}</p>`;
 
-      if (onContentChange) {
-        onContentChange(hasChanges);
-      }
-    },
-  });
+    try {
+      // Remove invalid characters that could cause InvalidCharacterError
+      return (
+        htmlContent
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control characters
+          .replace(/\uFEFF/g, "") // Remove BOM
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "") // Additional cleanup
+          .trim()
+      );
+    } catch (error) {
+      console.warn("Content sanitization error:", error);
+      return `<p>${t("modal.createDocument.contentPlaceholder")}</p>`;
+    }
+  };
 
   const processFile = (file: File): AttachmentFile => {
     const fileType = getFileType(file);
@@ -220,11 +228,11 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !editor) return;
+    if (!title.trim() || !content) return;
 
     setIsLoading(true);
     try {
-      const textContent = editor.getHTML();
+      const sanitizedContent = sanitizeContent(content);
       let documentId: number;
 
       if (mode === "edit" && editingDocumentId) {
@@ -232,14 +240,14 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           editingDocumentId,
           title.trim(),
           "",
-          textContent
+          sanitizedContent
         );
         documentId = editingDocumentId;
       } else {
         const newDocument = await db.createDocument(
           title.trim(),
           "",
-          textContent,
+          sanitizedContent,
           selectedCategory.id
         );
         documentId = newDocument.id;
@@ -249,7 +257,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
 
       // Reset change tracking
       setInitialTitle(title);
-      setInitialContent(textContent);
+      setInitialContent(sanitizedContent);
       if (onContentChange) {
         onContentChange(false);
       }
@@ -260,6 +268,26 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleContentChange = (newContent: string) => {
+    const sanitizedContent = sanitizeContent(newContent);
+    setContent(sanitizedContent);
+  };
+
+  const handleEditorContentChange = (hasChanges: boolean) => {
+    if (onContentChange) {
+      onContentChange(hasChanges);
+    }
+  };
+
+  // Reset editor function for Error Boundary
+  const resetEditor = () => {
+    setEditorKey((prev) => prev + 1);
+    const defaultContent = `<p>${t(
+      "modal.createDocument.contentPlaceholder"
+    )}</p>`;
+    setContent(defaultContent);
   };
 
   return (
@@ -277,7 +305,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           })}
           onCloseClick={onClose}
           onSaveClick={handleSubmit}
-          saveButtonDisabled={isLoading || !title.trim()}
+          saveButtonDisabled={isLoading || !title.trim() || !content}
           saveButtonText={
             isLoading
               ? mode === "edit"
@@ -292,6 +320,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
 
         <div className="flex-1 flex overflow-hidden">
           <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
+            {/* Title Input */}
             <div>
               <Label required>{t("modal.createDocument.titleField")}</Label>
               <Input
@@ -305,60 +334,24 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
               />
             </div>
 
-            {editor && (
-              <div className="flex items-center space-x-2 p-3 sage-bg-light rounded-xl">
-                <Button
-                  type="button"
-                  variant={editor.isActive("bold") ? "primary" : "ghost"}
-                  size="sm"
-                  onClick={() => editor.chain().focus().toggleBold().run()}
+            {/* Enhanced TipTap Editor with Error Boundary */}
+            <div className="flex-1">
+              <Label>{t("modal.createDocument.contentField")}</Label>
+              <EditorErrorBoundary onReset={resetEditor}>
+                <EnhancedTipTapEditor
+                  key={editorKey} // Force re-mount on reset
+                  content={content}
+                  onChange={handleContentChange}
+                  onContentChange={handleEditorContentChange}
+                  placeholder={t("modal.createDocument.contentPlaceholder")}
                   disabled={isLoading}
-                >
-                  {t("editor.bold")}
-                </Button>
-                <Button
-                  type="button"
-                  variant={editor.isActive("italic") ? "primary" : "ghost"}
-                  size="sm"
-                  onClick={() => editor.chain().focus().toggleItalic().run()}
-                  disabled={isLoading}
-                >
-                  {t("editor.italic")}
-                </Button>
-                <Button
-                  type="button"
-                  variant={
-                    editor.isActive("heading", { level: 2 })
-                      ? "primary"
-                      : "ghost"
-                  }
-                  size="sm"
-                  onClick={() =>
-                    editor.chain().focus().toggleHeading({ level: 2 }).run()
-                  }
-                  disabled={isLoading}
-                >
-                  {t("editor.heading")}
-                </Button>
-                <Button
-                  type="button"
-                  variant={editor.isActive("bulletList") ? "primary" : "ghost"}
-                  size="sm"
-                  onClick={() =>
-                    editor.chain().focus().toggleBulletList().run()
-                  }
-                  disabled={isLoading}
-                >
-                  {t("editor.bulletList")}
-                </Button>
-              </div>
-            )}
-
-            <div className="flex-1 sage-bg-medium rounded-xl">
-              <EditorContent editor={editor} className="h-full" />
+                  initialContent={initialContent}
+                />
+              </EditorErrorBoundary>
             </div>
           </div>
 
+          {/* Sidebar with Attachments */}
           <div className="w-96 sage-bg-dark border-l sage-border flex flex-col">
             <AttachmentList
               attachments={attachments}
