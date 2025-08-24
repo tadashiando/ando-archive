@@ -147,6 +147,76 @@
     "browserNotSupported": "Your browser doesn't support this file type",
     "openPdf": "Open PDF"
   },
+  "import": {
+    "dialog": {
+      "title": "Import Archive",
+      "description": "Import data and attachments from an archive file",
+      "importingTitle": "Importing Archive...",
+      "successTitle": "Import Complete",
+      "selectFilePrompt": "Choose an archive file to import",
+      "selectFile": "Select Archive File",
+      "selectDifferentFile": "Select Different File",
+      "analyzing": "Analyzing archive contents...",
+      "archiveInfo": "Archive Information",
+      "exportType": "Export Type",
+      "exportDate": "Export Date",
+      "appVersion": "App Version",
+      "importSummary": "Import Summary",
+      "conflictsFound": "{{count}} conflict found",
+      "conflictsFound_plural": "{{count}} conflicts found",
+      "conflictsDescription": "Some items already exist. Choose how to handle conflicts below.",
+      "conflictResolution": "Conflict Resolution",
+      "categoriesPreview": "Categories",
+      "documentsPreview": "Documents",
+      "inCategory": "in",
+      "andMore": "...and {{count}} more",
+      "startImport": "Start Import",
+      "errorTitle": "Analysis Failed",
+      "importErrorTitle": "Import Failed",
+      "successMessage": "Your archive has been imported successfully!",
+      "importedFrom": "Imported from",
+      "currentItem": "Processing"
+    },
+    "types": {
+      "complete": "Complete Archive",
+      "category": "Single Category",
+      "document": "Single Document"
+    },
+    "stats": {
+      "categories": "Categories",
+      "documents": "Documents",
+      "attachments": "Attachments",
+      "estimatedSize": "Total Size"
+    },
+    "status": {
+      "new": "New",
+      "exists": "Exists"
+    },
+    "resolution": {
+      "categories": "For conflicting categories:",
+      "documents": "For conflicting documents:",
+      "skip": {
+        "title": "Skip",
+        "description": "Keep existing items, ignore imported ones"
+      },
+      "merge": {
+        "title": "Merge",
+        "description": "Update existing items with imported properties"
+      },
+      "replace": {
+        "title": "Replace",
+        "description": "Completely replace existing items"
+      }
+    },
+    "fileType": {
+      "name": "Ando Archive Files"
+    },
+    "errors": {
+      "selectFile": "Failed to select import file",
+      "analyze": "Failed to analyze archive file",
+      "unknown": "An unknown error occurred during import"
+    }
+  },
   "export": {
     "dialog": {
       "title": "Export Archive",

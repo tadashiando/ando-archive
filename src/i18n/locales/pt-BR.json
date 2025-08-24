@@ -147,6 +147,76 @@
     "browserNotSupported": "Seu navegador não suporta este tipo de arquivo",
     "openPdf": "Abrir PDF"
   },
+  "import": {
+    "dialog": {
+      "title": "Importar Arquivo",
+      "description": "Importar dados e anexos de um arquivo",
+      "importingTitle": "Importando Arquivo...",
+      "successTitle": "Importação Concluída",
+      "selectFilePrompt": "Escolha um arquivo para importar",
+      "selectFile": "Selecionar Arquivo",
+      "selectDifferentFile": "Selecionar Arquivo Diferente",
+      "analyzing": "Analisando conteúdo do arquivo...",
+      "archiveInfo": "Informações do Arquivo",
+      "exportType": "Tipo de Exportação",
+      "exportDate": "Data da Exportação",
+      "appVersion": "Versão do App",
+      "importSummary": "Resumo da Importação",
+      "conflictsFound": "{{count}} conflito encontrado",
+      "conflictsFound_plural": "{{count}} conflitos encontrados",
+      "conflictsDescription": "Alguns itens já existem. Escolha como lidar com os conflitos abaixo.",
+      "conflictResolution": "Resolução de Conflitos",
+      "categoriesPreview": "Categorias",
+      "documentsPreview": "Documentos",
+      "inCategory": "em",
+      "andMore": "...e mais {{count}}",
+      "startImport": "Iniciar Importação",
+      "errorTitle": "Falha na Análise",
+      "importErrorTitle": "Falha na Importação",
+      "successMessage": "Seu arquivo foi importado com sucesso!",
+      "importedFrom": "Importado de",
+      "currentItem": "Processando"
+    },
+    "types": {
+      "complete": "Arquivo Completo",
+      "category": "Categoria Individual",
+      "document": "Documento Individual"
+    },
+    "stats": {
+      "categories": "Categorias",
+      "documents": "Documentos",
+      "attachments": "Anexos",
+      "estimatedSize": "Tamanho Total"
+    },
+    "status": {
+      "new": "Novo",
+      "exists": "Existe"
+    },
+    "resolution": {
+      "categories": "Para categorias conflitantes:",
+      "documents": "Para documentos conflitantes:",
+      "skip": {
+        "title": "Pular",
+        "description": "Manter itens existentes, ignorar importados"
+      },
+      "merge": {
+        "title": "Mesclar",
+        "description": "Atualizar itens existentes com propriedades importadas"
+      },
+      "replace": {
+        "title": "Substituir",
+        "description": "Substituir completamente itens existentes"
+      }
+    },
+    "fileType": {
+      "name": "Arquivos Ando Archive"
+    },
+    "errors": {
+      "selectFile": "Falha ao selecionar arquivo de importação",
+      "analyze": "Falha ao analisar arquivo",
+      "unknown": "Ocorreu um erro desconhecido durante a importação"
+    }
+  },
   "export": {
     "dialog": {
       "title": "Exportar Arquivo",

@@ -1,7 +1,15 @@
-import { writeFile, exists, mkdir, copyFile } from "@tauri-apps/plugin-fs";
+import {
+  writeFile,
+  exists,
+  mkdir,
+  copyFile,
+  readDir,
+  readFile,
+} from "@tauri-apps/plugin-fs";
 import { appDataDir, join, dirname } from "@tauri-apps/api/path";
 import { db } from "../database";
 import type { Category, Document, Attachment } from "../database";
+import JSZip from "jszip";
 
 interface ExportMetadata {
   version: string;
@@ -57,6 +65,8 @@ export class ExportEngine {
     exportPath: string,
     options: ExportOptions = { type: "complete" }
   ): Promise<void> {
+    let tempDir: string | null = null;
+
     try {
       this.reportProgress("collecting", 10, "Collecting data...");
 
@@ -70,7 +80,7 @@ export class ExportEngine {
       );
 
       // 2. Create temporary export directory
-      const tempDir = await this.createTempExportDirectory();
+      tempDir = await this.createTempExportDirectory();
 
       this.reportProgress(
         "copying-attachments",
@@ -107,6 +117,11 @@ export class ExportEngine {
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
+    } finally {
+      // Cleanup temp directory
+      if (tempDir) {
+        await this.cleanupTempDirectory(tempDir);
+      }
     }
   }
 
@@ -337,17 +352,78 @@ export class ExportEngine {
     sourceDir: string,
     exportPath: string
   ): Promise<void> {
-    // TODO: Implement actual ZIP compression with JSZip
-    // For now, we'll just copy the directory structure
+    try {
+      const zip = new JSZip();
 
-    console.log(
-      `Archive creation from ${sourceDir} to ${exportPath} - TODO: Implement ZIP`
-    );
+      // Add all files from sourceDir to ZIP
+      await this.addDirectoryToZip(zip, sourceDir, "");
 
-    // Real implementation would:
-    // 1. Use JSZip to create proper ZIP file
-    // 2. Add all files from sourceDir
-    // 3. Write to exportPath
+      // Generate ZIP file
+      const zipContent = await zip.generateAsync({
+        type: "uint8array",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      });
+
+      // Write ZIP file
+      await writeFile(exportPath, zipContent);
+
+      console.log(`Successfully created ZIP archive: ${exportPath}`);
+    } catch (error) {
+      console.error("ZIP creation failed:", error);
+      throw new Error(
+        `Failed to create archive: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  /**
+   * Recursively add directory contents to ZIP
+   */
+  private async addDirectoryToZip(
+    zip: JSZip,
+    dirPath: string,
+    zipPath: string
+  ): Promise<void> {
+    try {
+      const entries = await readDir(dirPath);
+
+      for (const entry of entries) {
+        const fullPath = await join(dirPath, entry.name);
+        const zipEntryPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory) {
+          // Recursively add subdirectory
+          await this.addDirectoryToZip(zip, fullPath, zipEntryPath);
+        } else {
+          // Add file to ZIP
+          const fileContent = await readFile(fullPath);
+          zip.file(zipEntryPath, fileContent);
+
+          console.log(`Added to ZIP: ${zipEntryPath}`);
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to add directory ${dirPath} to ZIP:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up temporary export directory
+   */
+  private async cleanupTempDirectory(tempDir: string): Promise<void> {
+    try {
+      const dirExists = await exists(tempDir);
+      if (dirExists) {
+        console.log(`TODO: Cleanup temp directory: ${tempDir}`);
+        // TODO: Implement recursive directory removal
+      }
+    } catch (error) {
+      console.warn("Failed to cleanup temp directory:", error);
+    }
   }
 
   /**

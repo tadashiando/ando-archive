@@ -16,6 +16,7 @@ import Header from "./Header";
 import { useMenuEvents } from "../../hooks/useMenuEvents";
 import { getCategoryIcon } from "../../utils/categoryIcons";
 import ExportDialog from "../Export/ExportDialog";
+import ImportDialog from "../Import/ImportDialog";
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -66,6 +67,7 @@ const MainLayout: React.FC = () => {
     "category" | "document" | null
   >(null);
   const [contextExportId, setContextExportId] = useState<number | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Determine sidebar collapse based on view mode
   const shouldSidebarCollapse = viewMode === "editor" || viewMode === "viewer";
@@ -130,7 +132,7 @@ const MainLayout: React.FC = () => {
 
     // File menu
     onExportArchive: () => setExportDialogOpen(true),
-    onImportArchive: () => console.log("Import archive - TODO"),
+    onImportArchive: () => setImportDialogOpen(true),
     onSettings: () => console.log("Settings"),
 
     // View menu
@@ -377,6 +379,14 @@ const MainLayout: React.FC = () => {
     setExportDialogOpen(true);
   };
 
+  const handleImportComplete = () => {
+    // Refresh all data after successful import
+    loadCategories();
+    if (selectedCategory) {
+      loadDocuments(selectedCategory.id);
+    }
+  };
+
   const handleCloseExportDialog = () => {
     setExportDialogOpen(false);
     setContextExportType(null);
@@ -526,7 +536,7 @@ const MainLayout: React.FC = () => {
                         onView={() => handleViewDocument(document.id)}
                         onEdit={() => handleEditDocument(document.id)}
                         onDelete={() => handleDeleteDocument(document.id)}
-                        onExport={() => handleExportDocument(document.id)} 
+                        onExport={() => handleExportDocument(document.id)}
                       />
                     ))}
 
@@ -588,6 +598,14 @@ const MainLayout: React.FC = () => {
         isLoading={false}
       />
 
+      {/* Import Dialog */}
+      <ImportDialog
+        isOpen={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImportComplete={handleImportComplete}
+      />
+
+      {/* Export Dialog */}
       <ExportDialog
         isOpen={exportDialogOpen}
         onClose={handleCloseExportDialog}
