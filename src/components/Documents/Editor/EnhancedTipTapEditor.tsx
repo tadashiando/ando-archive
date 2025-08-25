@@ -1,25 +1,14 @@
-// src/components/Documents/Editor/EnhancedTipTapEditor.tsx - FIXED VERSION
 import React, { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import Highlight from "@tiptap/extension-highlight";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
-import {
-  Table,
-  TableRow,
-  TableHeader,
-  TableCell,
-} from "@tiptap/extension-table";
+import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
-import CharacterCount from "@tiptap/extension-character-count";
 import { Card } from "../../UI";
-import EditorToolbar from "./EditorToolbar";
 
 interface EnhancedTipTapEditorProps {
   content: string;
@@ -36,254 +25,108 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
   onContentChange,
   placeholder,
   disabled = false,
-  initialContent,
+  initialContent = "",
 }) => {
   const { t } = useTranslation();
-  const editorRef = useRef<HTMLDivElement>(null);
-  const initialContentRef = useRef(initialContent || content);
-  const isInitialMount = useRef(true);
+  const initialRef = useRef(initialContent);
+  const isFirstUpdate = useRef(true);
 
-  // FIX 1: Configure TipTap with proper extension configuration to avoid duplicates
+  // Simple content sanitization
+  const cleanContent = (html: string): string => {
+    if (!html || typeof html !== "string") return "";
+
+    // Basic cleaning - remove only the most problematic chars
+    // eslint-disable-next-line no-control-regex
+    return html.replace(/[\x00\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+  };
+
+  // Create editor with minimal extensions
   const editor = useEditor({
     extensions: [
-      // Configure StarterKit to exclude extensions we'll add separately
-      StarterKit.configure({
-        // Disable built-in link to avoid conflicts
-        link: false,
-        heading: {
-          levels: [1, 2, 3, 4, 5, 6],
-        },
-      }),
-
-      // Add extensions individually to avoid conflicts
+      StarterKit,
       Underline,
-
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "sage-text-gold hover:sage-text-cream underline",
+          class: "text-blue-400 underline",
         },
       }),
-
       TextAlign.configure({
         types: ["heading", "paragraph"],
       }),
-
-      Highlight.configure({
-        multicolor: true,
-      }),
-
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
-
-      Table.configure({
-        resizable: true,
-      }),
-      TableRow,
-      TableHeader,
-      TableCell,
-
+      TextStyle,
       Color.configure({
         types: ["textStyle"],
       }),
-      TextStyle,
-
       FontFamily.configure({
         types: ["textStyle"],
       }),
-
-      CharacterCount,
     ],
 
-    // FIX 2: Sanitize initial content to avoid InvalidCharacterError
-    content:
-      sanitizeContent(content) ||
-      `<p>${placeholder || t("modal.createDocument.contentPlaceholder")}</p>`,
+    content: "", // Always start empty
 
     editorProps: {
       attributes: {
-        class: `
-          sage-text-cream p-6 rounded-xl min-h-[400px] focus:outline-none 
-          prose prose-invert max-w-none prose-lg leading-relaxed
-          prose-headings:sage-text-white prose-headings:font-bold
-          prose-p:sage-text-cream prose-p:leading-relaxed
-          prose-strong:sage-text-white prose-strong:font-bold
-          prose-em:sage-text-cream prose-em:italic
-          prose-ul:sage-text-cream prose-ol:sage-text-cream
-          prose-li:sage-text-cream prose-li:my-1
-          prose-blockquote:sage-text-mist prose-blockquote:border-l-sage-gold
-          prose-code:sage-bg-medium prose-code:sage-text-gold prose-code:px-1 prose-code:rounded
-          prose-pre:sage-bg-dark prose-pre:sage-text-cream
-          prose-table:sage-text-cream prose-th:sage-text-white prose-th:font-bold
-          prose-td:sage-text-cream prose-td:border-sage-light
-          prose-th:border-sage-light
-        `,
+        class:
+          "sage-text-cream p-4 focus:outline-none min-h-[300px] prose prose-invert max-w-none bg-transparent",
         spellcheck: "true",
-      },
-
-      // FIX 3: Improved keyboard handling with proper error handling
-      handleKeyDown: (_view, event) => {
-        try {
-          // Handle clipboard and shortcuts
-          if (event.metaKey || event.ctrlKey) {
-            switch (event.key) {
-              case "c":
-              case "v":
-              case "x":
-              case "a":
-                // Let browser handle clipboard operations
-                return false;
-              case "z":
-                if (event.shiftKey) {
-                  editor?.chain().focus().redo().run();
-                  event.preventDefault();
-                  return true;
-                } else {
-                  editor?.chain().focus().undo().run();
-                  event.preventDefault();
-                  return true;
-                }
-              case "b":
-                editor?.chain().focus().toggleBold().run();
-                event.preventDefault();
-                return true;
-              case "i":
-                editor?.chain().focus().toggleItalic().run();
-                event.preventDefault();
-                return true;
-              case "u":
-                editor?.chain().focus().toggleUnderline().run();
-                event.preventDefault();
-                return true;
-            }
-          }
-          return false;
-        } catch (error) {
-          console.warn("Keyboard shortcut error:", error);
-          return false;
-        }
+        style:
+          "background-color: transparent !important; caret-color: #d4c4a8;",
       },
     },
 
     onUpdate: ({ editor }) => {
-      try {
-        const html = editor.getHTML();
-        const sanitizedHtml = sanitizeContent(html);
-        onChange(sanitizedHtml);
+      const html = editor.getHTML();
+      onChange(html);
 
-        // Track changes for unsaved content detection
-        if (onContentChange && !isInitialMount.current) {
-          const hasChanges =
-            sanitizedHtml !== sanitizeContent(initialContentRef.current);
-          onContentChange(hasChanges);
-        }
-      } catch (error) {
-        console.error("Editor update error:", error);
+      if (onContentChange && !isFirstUpdate.current) {
+        const hasChanges = html !== initialRef.current;
+        onContentChange(hasChanges);
       }
     },
 
-    editable: !disabled,
-
-    // Add error handling
-    onTransaction: () => {
-      try {
-        // Handle transactions safely
-        return true;
-      } catch (error) {
-        console.warn("Transaction error:", error);
-        return false;
+    onCreate: ({ editor }) => {
+      // Set content after editor is ready
+      if (content) {
+        const cleaned = cleanContent(content);
+        if (cleaned) {
+          try {
+            editor.commands.setContent(cleaned, { emitUpdate: false });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (error) {
+            console.warn("Failed to set initial content, using fallback");
+          }
+        }
       }
+      isFirstUpdate.current = false;
     },
   });
 
-  // FIX 4: Content sanitization function
-  function sanitizeContent(htmlContent: string): string {
-    if (!htmlContent) return "";
-
-    try {
-      // Remove invalid characters that could cause InvalidCharacterError
-      return htmlContent
-        // eslint-disable-next-line no-control-regex
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // Remove control characters
-        .replace(/\uFEFF/g, "") // Remove BOM
-        // eslint-disable-next-line no-control-regex
-        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "") // Additional cleanup
-        .trim();
-    } catch (error) {
-      console.warn("Content sanitization error:", error);
-      return `<p>${placeholder || "Content could not be loaded"}</p>`;
-    }
-  }
-
-  // Effect to handle initial mount flag
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    }
-  }, []);
-
-  // Focus management and clipboard fix with error handling
-  useEffect(() => {
-    if (editor && !disabled) {
-      try {
-        const editorElement = editorRef.current?.querySelector(
-          "[contenteditable]"
-        ) as HTMLElement;
-        if (editorElement) {
-          editorElement.setAttribute("tabindex", "0");
-
-          // Fix clipboard events for Tauri
-          const handleClipboard = (e: ClipboardEvent) => {
-            try {
-              // Don't prevent default - let browser handle clipboard
-              e.stopPropagation();
-            } catch (error) {
-              console.warn("Clipboard event error:", error);
-            }
-          };
-
-          editorElement.addEventListener("copy", handleClipboard);
-          editorElement.addEventListener("paste", handleClipboard);
-          editorElement.addEventListener("cut", handleClipboard);
-
-          return () => {
-            editorElement.removeEventListener("copy", handleClipboard);
-            editorElement.removeEventListener("paste", handleClipboard);
-            editorElement.removeEventListener("cut", handleClipboard);
-          };
-        }
-      } catch (error) {
-        console.warn("Editor setup error:", error);
-      }
-    }
-  }, [editor, disabled]);
-
-  // Update content when prop changes with error handling
+  // Update content when prop changes
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
+      const cleaned = cleanContent(content);
       try {
-        const sanitizedContent = sanitizeContent(content);
-        editor.commands.setContent(sanitizedContent);
+        editor.commands.setContent(cleaned, { emitUpdate: false });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.warn("Content update error:", error);
+        console.warn("Content update failed");
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, editor]);
 
-  // Update initial content reference when initialContent changes
+  // Handle disabled state
   useEffect(() => {
-    initialContentRef.current = sanitizeContent(initialContent || content);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialContent, content]);
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [disabled, editor]);
 
   if (!editor) {
     return (
-      <Card variant="ghost" padding="lg" className="sage-bg-medium">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sage-gold"></div>
+      <Card className="sage-bg-medium p-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sage-gold"></div>
           <span className="ml-3 sage-text-mist">{t("common.loading")}</span>
         </div>
       </Card>
@@ -291,34 +134,245 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
   }
 
   return (
-    <div className="space-y-4" ref={editorRef}>
-      {/* Enhanced Toolbar */}
-      <EditorToolbar editor={editor} isLoading={disabled} />
+    <div className="space-y-3">
+      {/* Enhanced toolbar */}
+      <div className="flex items-center gap-2 p-3 sage-bg-dark rounded-lg border sage-border flex-wrap">
+        {/* Basic formatting */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm font-bold transition-colors ${
+              editor.isActive("bold")
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+          >
+            B
+          </button>
 
-      {/* Editor Content with Error Boundary */}
-      <Card
-        variant="ghost"
-        padding="none"
-        className="sage-bg-medium rounded-xl overflow-hidden"
-      >
-        <div className="sage-bg-medium rounded-xl min-h-[400px]">
-          <EditorContent editor={editor} className="h-full" />
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm italic transition-colors ${
+              editor.isActive("italic")
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+          >
+            I
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm underline transition-colors ${
+              editor.isActive("underline")
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+          >
+            U
+          </button>
         </div>
+
+        <div className="w-px h-6 sage-bg-medium"></div>
+
+        {/* Text alignment */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm transition-colors ${
+              editor.isActive({ textAlign: "left" }) ||
+              (!editor.isActive({ textAlign: "center" }) &&
+                !editor.isActive({ textAlign: "right" }))
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+            title="Align Left"
+          >
+            ⇤
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm transition-colors ${
+              editor.isActive({ textAlign: "center" })
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+            title="Align Center"
+          >
+            ↔
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm transition-colors ${
+              editor.isActive({ textAlign: "right" })
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+            title="Align Right"
+          >
+            ⇥
+          </button>
+        </div>
+
+        <div className="w-px h-6 sage-bg-medium"></div>
+
+        {/* Lists - Fixed commands */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm transition-colors ${
+              editor.isActive("bulletList")
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+            title="Bullet List"
+          >
+            •
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            disabled={disabled}
+            className={`p-2 rounded text-sm transition-colors ${
+              editor.isActive("orderedList")
+                ? "sage-bg-gold sage-text-dark"
+                : "sage-text-mist hover:sage-text-cream hover:sage-bg-medium"
+            }`}
+            title="Numbered List"
+          >
+            1.
+          </button>
+        </div>
+
+        <div className="w-px h-6 sage-bg-medium"></div>
+
+        {/* Colors */}
+        <div className="flex items-center gap-1">
+          <input
+            type="color"
+            onChange={(e) =>
+              editor.chain().focus().setColor(e.target.value).run()
+            }
+            disabled={disabled}
+            className="w-8 h-8 rounded border sage-border cursor-pointer"
+            title="Text Color"
+          />
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().unsetColor().run()}
+            disabled={disabled}
+            className="p-2 rounded text-xs sage-text-mist hover:sage-text-cream hover:sage-bg-medium transition-colors"
+            title="Reset Color"
+          >
+            Reset
+          </button>
+        </div>
+
+        <div className="w-px h-6 sage-bg-medium"></div>
+
+        {/* Font family */}
+        <select
+          onChange={(e) => {
+            if (e.target.value) {
+              editor.chain().focus().setFontFamily(e.target.value).run();
+            } else {
+              editor.chain().focus().unsetFontFamily().run();
+            }
+          }}
+          disabled={disabled}
+          className="px-2 py-1 rounded sage-bg-medium sage-text-cream text-sm border sage-border"
+        >
+          <option value="">Default Font</option>
+          <option value="Inter, system-ui, sans-serif">Inter</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Arial, sans-serif">Arial</option>
+        </select>
+      </div>
+
+      {/* Editor */}
+      <Card className="sage-bg-medium border sage-border">
+        <div className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg">
+          <EditorContent editor={editor} className="prose-editor-custom" />
+
+          {/* Placeholder */}
+          {editor.isEmpty && (
+            <div className="absolute top-4 left-4 sage-text-mist opacity-60 pointer-events-none">
+              {placeholder || t("modal.createDocument.contentPlaceholder")}
+            </div>
+          )}
+        </div>
+
+        <style>{`
+          .prose-editor-custom .ProseMirror {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 300px;
+            color: #f1f5f9;
+            outline: none;
+            caret-color: #d4c4a8;
+          }
+          
+          .prose-editor-custom .ProseMirror:hover {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+          }
+          
+          .prose-editor-custom .ProseMirror:focus {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+            box-shadow: 0 0 0 2px rgba(212, 196, 168, 0.3);
+          }
+          
+          .prose-editor-custom .ProseMirror p {
+            margin: 0.75rem 0;
+            color: #f1f5f9;
+          }
+          
+          .prose-editor-custom .ProseMirror ul, .prose-editor-custom .ProseMirror ol {
+            padding-left: 1.5rem;
+            margin: 1rem 0;
+          }
+          
+          .prose-editor-custom .ProseMirror li {
+            margin: 0.25rem 0;
+            color: #f1f5f9;
+          }
+          
+          .prose-editor-custom .ProseMirror ul li {
+            list-style-type: disc;
+          }
+          
+          .prose-editor-custom .ProseMirror ol li {
+            list-style-type: decimal;
+          }
+        `}</style>
       </Card>
 
-      {/* Editor Status */}
-      <div className="flex justify-between items-center text-xs sage-text-mist">
-        <div className="flex space-x-4">
-          <span>
-            {t("editor.characters")}:{" "}
-            {editor.storage.characterCount?.characters() || 0}
-          </span>
-          <span>
-            {t("editor.words")}: {editor.storage.characterCount?.words() || 0}
-          </span>
+      {/* Status */}
+      <div className="text-xs sage-text-mist flex justify-between">
+        <div>
+          {t("editor.characters")}:{" "}
+          {editor.storage.characterCount?.characters() || 0}
         </div>
-
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <div
             className={`w-2 h-2 rounded-full ${
               editor.isEditable ? "bg-green-400" : "bg-red-400"
@@ -331,21 +385,6 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
           </span>
         </div>
       </div>
-
-      {/* Keyboard Shortcuts Help */}
-      <details className="sage-text-mist text-xs">
-        <summary className="cursor-pointer hover:sage-text-cream">
-          {t("editor.keyboardShortcuts")}
-        </summary>
-        <div className="mt-2 space-y-1 ml-4">
-          <div>⌘/Ctrl + B: {t("editor.bold")}</div>
-          <div>⌘/Ctrl + I: {t("editor.italic")}</div>
-          <div>⌘/Ctrl + U: {t("editor.underline")}</div>
-          <div>⌘/Ctrl + Z: {t("editor.undo")}</div>
-          <div>⌘/Ctrl + Shift + Z: {t("editor.redo")}</div>
-          <div>⌘/Ctrl + C/V/X: {t("editor.clipboard")}</div>
-        </div>
-      </details>
     </div>
   );
 };

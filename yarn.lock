@@ -935,6 +935,13 @@
     "@tauri-apps/cli-win32-ia32-msvc" "2.8.2"
     "@tauri-apps/cli-win32-x64-msvc" "2.8.2"
 
+"@tauri-apps/plugin-clipboard-manager@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.3.0.tgz#1d0dea11aa88970cf94a153a052cb0d6634bcacd"
+  integrity sha512-81NOBA2P+OTY8RLkBwyl9ZR/0CeggLub4F6zxcxUIfFOAqtky7J61+K/MkH2SC1FMxNBxrX0swDuKvkjkHadlA==
+  dependencies:
+    "@tauri-apps/api" "^2.6.0"
+
 "@tauri-apps/plugin-dialog@^2.3.3":
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-dialog/-/plugin-dialog-2.3.3.tgz#0bfd78f1f754157b39295a33826afd41f769f28f"
