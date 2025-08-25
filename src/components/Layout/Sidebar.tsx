@@ -1,364 +1,189 @@
-import React, { useState } from "react";
+import React from "react";
+import { useTranslation } from "react-i18next";
 import {
-  XMarkIcon,
   ChevronRightIcon,
-  ChevronLeftIcon,
-  DocumentArrowDownIcon,
   ChevronDownIcon,
   PlusIcon,
+  FolderIcon,
 } from "@heroicons/react/24/outline";
-import { useTranslation } from "react-i18next";
-import { Card, Badge, IconButton } from "../UI";
 import type { CategoryWithChildren } from "../../database";
 import { getCategoryIcon } from "../../utils/categoryIcons";
+import {
+  useSidebarManager,
+  useCategoryManager,
+} from "../../hooks/useCompositeHooks";
 
 interface SidebarProps {
-  categories: CategoryWithChildren[];
-  selectedCategory: CategoryWithChildren | null;
-  onCategoryChange: (category: CategoryWithChildren) => void;
-  categoryCounts?: { [key: number]: number };
-  mode?: "main" | "editor" | "viewer";
-  onClose?: () => void;
-  isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
-  onExportCategory?: (categoryId: number) => void;
-  onCreateSubcategory?: (parentCategory: CategoryWithChildren) => void;
-  className?: string;
+  // Remove all the props that were being passed down
+  // The component will get data from stores directly
+  visible: boolean;
+  collapsed: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
-  categories,
-  selectedCategory,
-  onCategoryChange,
-  categoryCounts = {},
-  mode = "main",
-  onClose,
-  isCollapsed: propIsCollapsed,
-  onToggleCollapse,
-  onExportCategory,
-  onCreateSubcategory,
-  className = "",
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ visible, collapsed }) => {
   const { t } = useTranslation();
-  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
-    new Set()
-  );
 
-  // Use prop value if provided, otherwise determine based on mode
-  const isCollapsed =
-    propIsCollapsed ?? (mode === "editor" || mode === "viewer");
-  const showCounts = mode === "main" && !isCollapsed;
-  const showCloseButton = mode === "viewer" && !isCollapsed;
-  const showToggleButton =
-    (mode === "editor" || mode === "viewer") && onToggleCollapse;
+  // Use composite hooks instead of props
+  const {
+    categories,
+    selectedCategory,
+    expandedCategories,
+    setSelectedCategory,
+    toggleCategoryExpansion,
+  } = useSidebarManager();
 
-  const sidebarWidth = isCollapsed ? "w-16" : "w-80";
+  const { openSubcategoryModal } = useCategoryManager();
 
-  const toggleCategoryExpansion = (categoryId: number) => {
-    setExpandedCategories((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
-    });
+  if (!visible) return null;
+
+  const handleCategoryClick = (category: CategoryWithChildren) => {
+    setSelectedCategory(category);
   };
 
-  const isExpanded = (categoryId: number) => expandedCategories.has(categoryId);
-
-  const handleCategorySelect = (category: CategoryWithChildren) => {
-    onCategoryChange(category);
+  const handleAddSubcategory = (
+    e: React.MouseEvent,
+    parentCategory: CategoryWithChildren
+  ) => {
+    e.stopPropagation();
+    openSubcategoryModal(parentCategory);
   };
 
-  const handleSubcategorySelect = (subcategory: CategoryWithChildren) => {
-    // Create a full category object for subcategory
-    const subcategoryWithParent: CategoryWithChildren = {
-      ...subcategory,
-      subcategories: [],
-      documentCount: categoryCounts[subcategory.id] || 0,
-      totalDocumentCount: categoryCounts[subcategory.id] || 0,
-    };
-    onCategoryChange(subcategoryWithParent);
+  const handleToggleExpansion = (e: React.MouseEvent, categoryId: number) => {
+    e.stopPropagation();
+    toggleCategoryExpansion(categoryId);
   };
 
-  return (
-    <aside
-      className={`
-        sage-bg-dark sage-border border-r-2 transition-all duration-300 
-        ${sidebarWidth} overflow-hidden flex flex-col ${className}
-      `}
-    >
-      {/* Header da Sidebar */}
-      <div className="p-3 border-b sage-border">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <h2 className="font-bold sage-text-cream flex items-center text-xl">
-              <span className="text-2xl mr-2">🗂️</span>
-              {t("navigation.categories")}
-            </h2>
+  const renderCategory = (
+    category: CategoryWithChildren,
+    level: number = 0
+  ) => {
+    const isSelected = selectedCategory?.id === category.id;
+    const isExpanded = expandedCategories.has(category.id);
+    const hasSubcategories =
+      category.subcategories && category.subcategories.length > 0;
+
+    return (
+      <div key={category.id}>
+        <div
+          className={`
+            flex items-center px-3 py-2 cursor-pointer rounded-lg mx-2 mb-1
+            transition-colors duration-150
+            ${
+              isSelected
+                ? "sage-bg-accent-soft sage-text-accent-bright"
+                : "sage-text-mist hover:sage-bg-soft hover:sage-text-cream"
+            }
+            ${level > 0 ? "ml-6" : ""}
+          `}
+          onClick={() => handleCategoryClick(category)}
+          style={{ paddingLeft: collapsed ? "12px" : `${12 + level * 20}px` }}
+        >
+          {/* Expansion chevron */}
+          {hasSubcategories && !collapsed && (
+            <button
+              className="mr-2 p-0.5 hover:sage-bg-medium rounded transition-colors"
+              onClick={(e) => handleToggleExpansion(e, category.id)}
+            >
+              {isExpanded ? (
+                <ChevronDownIcon className="w-3 h-3" />
+              ) : (
+                <ChevronRightIcon className="w-3 h-3" />
+              )}
+            </button>
           )}
 
-          {isCollapsed && (
-            <div className="w-full flex justify-center">
-              <span className="text-2xl">🗂️</span>
-            </div>
-          )}
+          {/* Category icon */}
+          <div
+            className="w-5 h-5 mr-3 flex-shrink-0"
+            style={{ color: isSelected ? undefined : category.color }}
+          >
+            {getCategoryIcon(category.icon)}
+          </div>
 
-          {/* Action buttons */}
-          {!isCollapsed && (
-            <div className="flex items-center space-x-1">
-              {showToggleButton && (
-                <IconButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleCollapse}
-                  icon={<ChevronLeftIcon className="h-4 w-4" />}
-                  label="Colapsar sidebar"
-                />
+          {/* Category name and count */}
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate font-medium text-sm">
+                {category.name}
+              </span>
+
+              {/* Document count */}
+              {(category.documentCount || 0) > 0 && (
+                <span className="text-xs sage-text-mist bg-sage-600/30 px-2 py-0.5 rounded-full ml-2">
+                  {category.documentCount}
+                </span>
               )}
 
-              {showCloseButton && (
-                <IconButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  icon={<XMarkIcon className="h-4 w-4" />}
-                  label={t("common.close")}
-                />
+              {/* Add subcategory button */}
+              {level === 0 && (
+                <button
+                  className="ml-2 p-1 opacity-0 group-hover:opacity-100 hover:sage-bg-medium rounded transition-all"
+                  onClick={(e) => handleAddSubcategory(e, category)}
+                  title={t("categories.addSubcategory")}
+                >
+                  <PlusIcon className="w-3 h-3" />
+                </button>
               )}
-            </div>
+            </>
           )}
         </div>
 
-        {/* Collapsed toggle button */}
-        {isCollapsed && showToggleButton && (
-          <div className="flex justify-center mt-2">
-            <IconButton
-              variant="ghost"
-              size="sm"
-              onClick={onToggleCollapse}
-              icon={<ChevronRightIcon className="h-3 w-3" />}
-              label="Expandir sidebar"
-              className="sage-bg-medium hover:sage-bg-light"
-            />
+        {/* Render subcategories */}
+        {hasSubcategories && isExpanded && !collapsed && (
+          <div className="mb-1">
+            {category.subcategories!.map((subcategory) =>
+              renderCategory(subcategory, level + 1)
+            )}
           </div>
         )}
       </div>
+    );
+  };
 
-      {/* Lista de Categorias Hierárquica */}
-      <div className="flex-1 p-3 space-y-2 overflow-y-auto">
-        {categories.map((category) => {
-          const isSelected = selectedCategory?.id === category.id;
-          const hasSubcategories =
-            category.subcategories && category.subcategories.length > 0;
-          const expanded = isExpanded(category.id);
+  return (
+    <div
+      className={`
+        fixed left-0 top-16 bottom-0 z-30 transition-all duration-200
+        sage-bg-medium border-r sage-border
+        ${collapsed ? "w-16" : "w-80"}
+      `}
+    >
+      {/* Categories Header */}
+      {!collapsed && (
+        <div className="p-4 border-b sage-border">
+          <h2 className="text-sm font-semibold sage-text-cream uppercase tracking-wider">
+            {t("navigation.categories")}
+          </h2>
+        </div>
+      )}
 
-          return (
-            <div key={category.id} className="space-y-1">
-              {/* Root Category */}
-              <Card
-                variant={isSelected ? "selected" : "category"}
-                padding={isCollapsed ? "sm" : "md"}
-                onClick={() => handleCategorySelect(category)}
-                className="transition-all duration-200 cursor-pointer group"
-                title={isCollapsed ? category.name : undefined}
-              >
-                {isCollapsed ? (
-                  // Collapsed mode - icon only, centered
-                  <div className="flex justify-center">
-                    <span className="text-xl">
-                      {getCategoryIcon(category.name, category.icon)}
-                    </span>
-                  </div>
-                ) : (
-                  // Expanded mode - full layout
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      {/* Expand/Collapse button for categories with subcategories */}
-                      {hasSubcategories && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCategoryExpansion(category.id);
-                          }}
-                          className="p-0.5 rounded hover:sage-bg-light transition-colors"
-                        >
-                          <ChevronDownIcon
-                            className={`h-4 w-4 transition-transform duration-200 ${
-                              expanded ? "transform rotate-180" : ""
-                            } ${
-                              isSelected ? "text-gray-800" : "sage-text-mist"
-                            }`}
-                          />
-                        </button>
-                      )}
-
-                      {/* Category icon */}
-                      <span className="text-xl flex-shrink-0">
-                        {getCategoryIcon(category.name, category.icon)}
-                      </span>
-
-                      {/* Category name */}
-                      <span
-                        className={`font-bold text-lg truncate ${
-                          isSelected ? "text-gray-800" : "sage-text-cream"
-                        }`}
-                      >
-                        {category.name}
-                      </span>
-                    </div>
-
-                    {/* Right side actions and counts */}
-                    {!isCollapsed && showCounts && (
-                      <div className="flex items-center space-x-1 flex-shrink-0">
-                        {/* Document count badge */}
-                        <Badge
-                          variant={isSelected ? "default" : "primary"}
-                          size="sm"
-                          title={`${category.totalDocumentCount} documentos (incluindo subcategorias)`}
-                        >
-                          {category.totalDocumentCount || 0}
-                        </Badge>
-
-                        {/* Export button */}
-                        {onExportCategory && (
-                          <IconButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onExportCategory(category.id);
-                            }}
-                            icon={<DocumentArrowDownIcon className="h-3 w-3" />}
-                            label={t("categories.export")}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          />
-                        )}
-
-                        {/* Add subcategory button */}
-                        {onCreateSubcategory && (
-                          <IconButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCreateSubcategory(category);
-                            }}
-                            icon={<PlusIcon className="h-3 w-3" />}
-                            label={t(
-                              "categories.addSubcategory",
-                              "Add subcategory"
-                            )}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
-
-              {/* Subcategories */}
-              {!isCollapsed && hasSubcategories && expanded && (
-                <div className="ml-6 space-y-1">
-                  {category.subcategories!.map((subcategory) => {
-                    const isSubcategorySelected =
-                      selectedCategory?.id === subcategory.id;
-                    const subcategoryCount =
-                      categoryCounts[subcategory.id] || 0;
-
-                    return (
-                      <Card
-                        key={subcategory.id}
-                        variant={isSubcategorySelected ? "selected" : "ghost"}
-                        padding="sm"
-                        onClick={() => handleSubcategorySelect(subcategory)}
-                        className="transition-all duration-200 cursor-pointer group border-l-2 sage-border ml-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            <span className="text-sm">
-                              {getCategoryIcon(
-                                subcategory.name,
-                                subcategory.icon
-                              )}
-                            </span>
-                            <span
-                              className={`font-medium text-sm truncate ${
-                                isSubcategorySelected
-                                  ? "text-gray-800"
-                                  : "sage-text-cream"
-                              }`}
-                            >
-                              {subcategory.name}
-                            </span>
-                          </div>
-
-                          {showCounts && (
-                            <div className="flex items-center space-x-1 flex-shrink-0">
-                              <Badge
-                                variant={
-                                  isSubcategorySelected ? "default" : "primary"
-                                }
-                                size="sm"
-                                className="text-xs"
-                              >
-                                {subcategoryCount}
-                              </Badge>
-
-                              {/* Export subcategory */}
-                              {onExportCategory && (
-                                <IconButton
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onExportCategory(subcategory.id);
-                                  }}
-                                  icon={
-                                    <DocumentArrowDownIcon className="h-3 w-3" />
-                                  }
-                                  label={t("categories.export")}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                />
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Subcategory description */}
-                        {subcategory.description && (
-                          <p
-                            className={`text-xs mt-1 truncate ${
-                              isSubcategorySelected
-                                ? "text-gray-600"
-                                : "sage-text-mist"
-                            }`}
-                          >
-                            {subcategory.description}
-                          </p>
-                        )}
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
+      {/* Categories List */}
+      <div className="flex-1 overflow-y-auto py-2">
+        {categories.length === 0 ? (
+          !collapsed && (
+            <div className="p-4 text-center">
+              <FolderIcon className="w-8 h-8 mx-auto sage-text-mist mb-2" />
+              <p className="text-sm sage-text-mist">
+                {t("categories.noCategories")}
+              </p>
             </div>
-          );
-        })}
-
-        {categories.length === 0 && (
-          <div className="text-center py-8">
-            <span className="text-4xl mb-4 block">📁</span>
-            <p className="sage-text-mist">
-              {t("categories.noCategories", "No categories found")}
-            </p>
+          )
+        ) : (
+          <div className="space-y-1">
+            {categories.map((category) => renderCategory(category))}
           </div>
         )}
       </div>
-    </aside>
+
+      {/* Collapsed state indicator */}
+      {collapsed && (
+        <div className="p-2 border-t sage-border">
+          <div className="w-3 h-3 mx-auto sage-text-mist">
+            <FolderIcon />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
