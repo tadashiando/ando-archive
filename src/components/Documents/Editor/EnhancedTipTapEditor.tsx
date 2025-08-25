@@ -9,6 +9,7 @@ import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import { Card } from "../../UI";
+import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 
 interface EnhancedTipTapEditorProps {
   content: string;
@@ -43,7 +44,24 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
   // Create editor with minimal extensions
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Configure list handling properly
+        bulletList: {
+          HTMLAttributes: {
+            class: "editor-bullet-list",
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: "editor-ordered-list",
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: "editor-list-item",
+          },
+        },
+      }),
       Underline,
       Link.configure({
         openOnClick: false,
@@ -72,6 +90,65 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
         spellcheck: "true",
         style:
           "background-color: transparent !important; caret-color: #d4c4a8;",
+      },
+      handleKeyDown: (view, event) => {
+        // Handle Tauri clipboard shortcuts
+        if (event.metaKey || event.ctrlKey) {
+          if (event.key === "c") {
+            // Copy
+            event.preventDefault();
+            const selectedText = view.state.doc.textBetween(
+              view.state.selection.from,
+              view.state.selection.to
+            );
+            if (selectedText) {
+              writeText(selectedText).catch(console.warn);
+            }
+            return true;
+          }
+
+          if (event.key === "v") {
+            // Paste
+            event.preventDefault();
+            readText()
+              .then((text) => {
+                if (text) {
+                  view.dispatch(
+                    view.state.tr.insertText(
+                      text,
+                      view.state.selection.from,
+                      view.state.selection.to
+                    )
+                  );
+                }
+              })
+              .catch(console.warn);
+            return true;
+          }
+
+          if (event.key === "x") {
+            // Cut
+            event.preventDefault();
+            const selectedText = view.state.doc.textBetween(
+              view.state.selection.from,
+              view.state.selection.to
+            );
+            if (selectedText) {
+              writeText(selectedText)
+                .then(() => {
+                  view.dispatch(
+                    view.state.tr.delete(
+                      view.state.selection.from,
+                      view.state.selection.to
+                    )
+                  );
+                })
+                .catch(console.warn);
+            }
+            return true;
+          }
+        }
+        return false;
       },
     },
 
@@ -309,7 +386,7 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
       </div>
 
       {/* Editor */}
-      <Card className="sage-bg-medium border sage-border">
+      <div className="sage-bg-medium rounded-lg">
         <div className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg">
           <EditorContent editor={editor} className="prose-editor-custom" />
 
@@ -328,17 +405,52 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
             padding: 16px;
             min-height: 300px;
             color: #f1f5f9;
-            outline: none;
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
             caret-color: #d4c4a8;
+            transition: none !important;
           }
           
           .prose-editor-custom .ProseMirror:hover {
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
           }
           
           .prose-editor-custom .ProseMirror:focus {
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-            box-shadow: 0 0 0 2px rgba(212, 196, 168, 0.3);
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+          }
+          
+          .prose-editor-custom .ProseMirror:focus-visible {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+          }
+          
+          /* Remove any parent container effects */
+          .prose-editor-custom {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            transition: none !important;
+          }
+          
+          .prose-editor-custom:hover {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
+          
+          .prose-editor-custom:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
           }
           
           .prose-editor-custom .ProseMirror p {
@@ -346,25 +458,57 @@ const EnhancedTipTapEditor: React.FC<EnhancedTipTapEditorProps> = ({
             color: #f1f5f9;
           }
           
-          .prose-editor-custom .ProseMirror ul, .prose-editor-custom .ProseMirror ol {
-            padding-left: 1.5rem;
-            margin: 1rem 0;
+          /* Bullet Lists */
+          .prose-editor-custom .ProseMirror .editor-bullet-list {
+            padding-left: 1.5rem !important;
+            margin: 1rem 0 !important;
+            list-style: none !important;
           }
           
-          .prose-editor-custom .ProseMirror li {
-            margin: 0.25rem 0;
-            color: #f1f5f9;
+          .prose-editor-custom .ProseMirror .editor-bullet-list .editor-list-item {
+            position: relative;
+            margin: 0.5rem 0 !important;
+            color: #f1f5f9 !important;
+            padding-left: 0 !important;
           }
           
-          .prose-editor-custom .ProseMirror ul li {
-            list-style-type: disc;
+          .prose-editor-custom .ProseMirror .editor-bullet-list .editor-list-item::before {
+            content: "•";
+            color: #d4c4a8;
+            font-weight: bold;
+            position: absolute;
+            left: -1.2rem;
+            top: 0;
           }
           
-          .prose-editor-custom .ProseMirror ol li {
-            list-style-type: decimal;
+          /* Ordered Lists */
+          .prose-editor-custom .ProseMirror .editor-ordered-list {
+            padding-left: 1.5rem !important;
+            margin: 1rem 0 !important;
+            list-style: none !important;
+            counter-reset: list-counter;
+          }
+          
+          .prose-editor-custom .ProseMirror .editor-ordered-list .editor-list-item {
+            position: relative;
+            margin: 0.5rem 0 !important;
+            color: #f1f5f9 !important;
+            padding-left: 0 !important;
+            counter-increment: list-counter;
+          }
+          
+          .prose-editor-custom .ProseMirror .editor-ordered-list .editor-list-item::before {
+            content: counter(list-counter) ".";
+            color: #d4c4a8;
+            font-weight: bold;
+            position: absolute;
+            left: -1.5rem;
+            top: 0;
+            min-width: 1.2rem;
+            text-align: right;
           }
         `}</style>
-      </Card>
+      </div>
 
       {/* Status */}
       <div className="text-xs sage-text-mist flex justify-between">
